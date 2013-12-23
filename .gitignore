@@ -12,6 +12,7 @@ logs
 results
 
 npm-debug.log
+bower_components
 node_modules
 .idea
 _.DS_Store
