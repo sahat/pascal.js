@@ -2,12 +2,8 @@
 <html>
 <head>
   <title>Pascal.js - Pascal Compiler</title>
-  <script data-main="src/main" src="bower_components/requirejs/require.js"></script>
   <style type="text/css" media="screen">
-    body {
-      overflow: hidden;
-    }
-
+    body { overflow: hidden; }
     #editor {
       margin: 0;
       position: absolute;
@@ -19,21 +15,7 @@
   </style>
 </head>
 <body>
-
-  <pre id="editor">function foo(items) {
-      var i;
-      for (i = 0; i &lt; items.length; i++) {
-          alert("Ace Rocks " + items[i]);
-      }
-  }</pre>
-
-
-  <script src="bower_components/ace-builds/src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
-  <script>
-    var editor = ace.edit("editor");
-    editor.setTheme("ace/theme/textmate");
-    editor.getSession().setMode("ace/mode/javascript");
-  </script>
-
+  <pre id="editor"></pre>
+  <script data-main="src/main" src="bower_components/requirejs/require.js"></script>
 </body>
 </html>

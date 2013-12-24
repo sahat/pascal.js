@@ -6,6 +6,6 @@
     "requirejs": "2.1.9",
     "jquery": "latest",
     "ace-builds": "latest",
-    "underscore": "latest"
+    "underscore-amd": "latest"
   }
 }
