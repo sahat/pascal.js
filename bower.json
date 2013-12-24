@@ -1,11 +1,11 @@
 {
-  "name": "pascal.js",
+  "name": "PascalJS",
   "version": "0.0.1",
 
   "devDependencies": {
     "requirejs": "2.1.9",
     "jquery": "latest",
-    "ace": "latest",
+    "ace-builds": "latest",
     "underscore": "latest"
   }
 }
