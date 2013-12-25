@@ -15,8 +15,16 @@
   </style>
 </head>
 <body>
-  <pre id="editor"></pre>
-  <script data-main="src/main" src="bower_components/requirejs/require.js"></script>
+  <pre id="editor">console.log('ACE Editor');
+  </pre>
+  <script src="bower_components/underscore/underscore-min.js"></script>
+  <script src="bower_components/jquery/jquery.min.js"></script>
+  <script src="bower_components/ace-builds/src-min/ace.js" charset="utf-8"></script>
+  <script>
+    var editor = ace.edit("editor");
+    editor.setTheme("ace/theme/textmate");
+    editor.getSession().setMode("ace/mode/javascript");
+  </script>
   <script src="pascal.js"></script>
 </body>
 </html>
