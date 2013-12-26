@@ -9,29 +9,6 @@
   /**
    * Constants
    */
-
-  var Pascal = function(obj) {
-    return obj;
-  };
-
-
-  var PascalError = function(token, message) {
-    this.token = token;
-    this.message = message;
-    this.stack = new Error().stack;
-  };
-
-  PascalError.prototype.getMessage = function () {
-    var message = "Error: " + this.message;
-
-    // Add token info.
-    if (this.token) {
-      message += " (\"" + this.token.tokenValue + "\", line " + this.token.lineNumber + ")";
-    }
-
-    return message;
-  };
-
   var OPCODE_BITS = 8;
   var OPERAND1_BITS = 9;
   var OPERAND2_BITS = 15;
@@ -280,35 +257,54 @@
   defs.opcodeToName[defs.STI] = "STI";
   defs.opcodeToName[defs.IXA] = "IXA";
 
-
-
-
-  var isAlpha = function (ch) {
-    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+  var Pascal = function(obj) {
+    return obj;
   };
 
-  // Whether the character is a digit.
-  var isDigit = function (ch) {
-    return ch >= '0' && ch <= '9';
+
+  var PascalError = function(token, message) {
+    this.token = token;
+    this.message = message;
+    this.stack = new Error().stack;
   };
 
-  // Whether the character is a valid first character of an identifier.
-  var isIdentifierStart = function (ch) {
-    return isAlpha(ch) || ch == '_';
+  PascalError.prototype.getMessage = function () {
+    var message = "Error: " + this.message;
+
+    // Add token info.
+    if (this.token) {
+      message += " (\"" + this.token.tokenValue + "\", line " + this.token.lineNumber + ")";
+    }
+
+    return message;
   };
 
-  // Whether the character is a valid subsequent (non-first) character of an identifier.
-  var isIdentifierPart = function (ch) {
-    return isIdentifierStart(ch) || isDigit(ch);
-  };
 
-  // Whether the character is whitespace.
-  var isWhitespace = function (ch) {
-    return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r';
-  };
+  /**
+   * Helpers
+   */
 
-  // Format number or string to width characters, left-aligned.
-  var leftAlign = function (value, width) {
+  function isWhitespace(char) {
+    return char == ' ' || char == '\t' || char == '\n' || char == '\r';
+  }
+
+  function isAlphanumeric(char) {
+    return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z');
+  }
+
+  function isDigit(char) {
+    return char >= '0' && char <= '9';
+  }
+
+  function isValidIdentifierStart(char) {
+    return isAlphanumeric(char) || char == '_';
+  }
+
+  function isValidIdentifierPart(char) {
+    return isDigit(char) || isValidIdentifierStart(char);
+  }
+
+  function leftAlign(value, width) {
     // Convert to string.
     value = "" + value;
 
@@ -318,10 +314,9 @@
     }
 
     return value;
-  };
+  }
 
-  // Format number or string to width characters, right-aligned.
-  var rightAlign = function (value, width) {
+  function rightAlign(value, width) {
     // Convert to string.
     value = "" + value;
 
@@ -331,47 +326,16 @@
     }
 
     return value;
-  };
+  }
 
-  // Truncate toward zero.
-  var trunc = function (value) {
+  function truncate(value) {
     if (value < 0) {
       return Math.ceil(value);
     } else {
       return Math.floor(value);
     }
-  };
+  }
 
-  // Repeat a string "count" times.
-  var repeatString = function (s, count) {
-    var result = "";
-
-    // We go through each bit of "count", adding a string of the right length
-    // to "result" if the bit is 1.
-    while (true) {
-      if ((count & 1) !== 0) {
-        result += s;
-      }
-
-      // Move to the next bit.
-      count >>= 1;
-      if (count === 0) {
-        // Exit here before needlessly doubling the size of "s".
-        break;
-      }
-
-      // Double the length of "s" to correspond to the value of the shifted bit.
-      s += s;
-    }
-
-    return result;
-  };
-
-  // Log an object written out in human-readable JSON. This can't handle
-  // circular structures.
-  var logAsJson = function (obj) {
-    console.log(JSON.stringify(obj, null, 2));
-  };
 
   var Token = function (value, type) {
     this.tokenValue = value;
@@ -494,13 +458,13 @@
       token = new Token(value, Token.T_COMMENT);
     }
 
-    if (token === null && isIdentifierStart(ch)) {
+    if (token === null && isValidIdentifierStart(ch)) {
       // Keep adding more characters until we're not part of this token anymore.
       var value = "";
       while (true) {
         value += ch;
         ch = this.stream.lookAhead();
-        if (ch === -1 || !isIdentifierPart(ch)) {
+        if (ch === -1 || !isValidIdentifierPart(ch)) {
           break;
         }
         this.stream.next();
@@ -3693,7 +3657,7 @@
         if (op2 === 0) {
           throw new PascalError(null, "divide by zero");
         }
-        this._push(trunc(op1 / op2));
+        this._push(truncate(op1 / op2));
         break;
       case defs.MOD:
         // Modulo.
