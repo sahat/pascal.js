@@ -625,13 +625,6 @@ var Pascal = (function() {
     this.line = 1;
   }
 
-  Stream.prototype.next = function () {
-    var char = this.lookAhead();
-    if (char === '\n') this.line++;
-    if (char !== -1) this.position++;
-    return char;
-  };
-
   Stream.prototype.lookAhead = function () {
     if (this.position >= this.input.length) {
       return -1;
@@ -639,12 +632,18 @@ var Pascal = (function() {
     return this.input[this.position];
   };
 
+  Stream.prototype.next = function () {
+    var char = this.lookAhead();
+    if (char === '\n') this.line++;
+    if (char !== -1) this.position++;
+    return char;
+  };
+
   Stream.prototype.previous = function (char) {
     if (this.position === 0) {
       throw new Error("Can't push back at start of stream");
     }
     this.position--;
-    // Sanity check.
     if (this.input[this.position] != char) {
       throw new Error("Pushed back character doesn't match");
     }
@@ -1901,14 +1900,13 @@ var Pascal = (function() {
     return symbolTable;
   };
 
-  var Parser = function (scanner) {
+  function Parser(scanner) {
+    console.log(scanner)
     this.scanner = scanner;
-  };
+  }
 
-  // Parse an entire Pascal program.
-  Parser.prototype.parse = function (symbolTable) {
-    var node = this._parseSubprogramDeclaration(symbolTable, Node.PROGRAM);
-
+  Parser.prototype.parse = function(symbolTable) {
+    var node = this.parseSubprogramDeclaration(symbolTable, Node.PROGRAM);
     return node;
   };
 
@@ -1916,7 +1914,7 @@ var Pascal = (function() {
   // two symbols, one that's a separator and one's that a terminator. Returns
   // true and eats the symbol if it sees the separator; returns false and
   // leaves the symbol if it sees the terminator. Throws if it sees anything else.
-  Parser.prototype._moreToCome = function (separator, terminator) {
+  Parser.prototype.moreEntitiesToCome = function (separator, terminator) {
     var token = this.scanner.lookAhead();
     if (token.isSymbol(separator)) {
       // More to come. Eat the separator.
@@ -1933,7 +1931,7 @@ var Pascal = (function() {
 
   // Eats the next symbol. If it's not this reserved word, raises an error with this
   // message. Returns the token.
-  Parser.prototype._expectReservedWord = function (reservedWord, message) {
+  Parser.prototype.expectReservedWord = function (reservedWord, message) {
     var token = this.scanner.next();
     message = message || ("expected reserved word \"" + reservedWord + "\"");
     if (!token.isReserved(reservedWord)) {
@@ -1944,7 +1942,7 @@ var Pascal = (function() {
 
   // Eats the next symbol (such as ":="). If it's not this symbol, raises an
   // error with this message. Returns the token.
-  Parser.prototype._expectSymbol = function (symbol, message) {
+  Parser.prototype.expectSymbol = function (symbol, message) {
     var token = this.scanner.next();
     if (token.tokenType !== Token.TK_SYMBOL || token.tokenValue !== symbol) {
       message = message || ("expected symbol \"" + symbol + "\"");
@@ -1955,7 +1953,7 @@ var Pascal = (function() {
 
   // Eats the next symbol. If it's not an identifier, raises an error with this
   // message. Returns the identifier token.
-  Parser.prototype._expectIdentifier = function (message) {
+  Parser.prototype.expectIdentifier = function (message) {
     var token = this.scanner.next();
     if (token.tokenType !== Token.TK_IDENTIFIER) {
       throw new PascalError(token, message);
@@ -1964,13 +1962,13 @@ var Pascal = (function() {
   };
 
   // Returns a list of declarations (var, etc.).
-  Parser.prototype._parseDeclarations = function (symbolTable) {
+  Parser.prototype.parseDeclarations = function (symbolTable) {
     var declarations = [];
 
     // Parse each declaration or block.
     while (!this.scanner.lookAhead().isReserved("begin")) {
       // This parser also eats the semicolon after the declaration.
-      var nodes = this._parseDeclaration(symbolTable);
+      var nodes = this.parseDeclaration(symbolTable);
 
       // Extend the declarations array with the nodes array.
       declarations.push.apply(declarations, nodes);
@@ -1981,24 +1979,24 @@ var Pascal = (function() {
 
   // Parse any declaration (uses, var, procedure, function). Returns a list
   // of them, in case a declaration expands to be multiple nodes.
-  Parser.prototype._parseDeclaration = function (symbolTable) {
+  Parser.prototype.parseDeclaration = function (symbolTable) {
     var token = this.scanner.lookAhead();
 
     if (token.isReserved("uses")) {
-      return this._parseUsesDeclaration(symbolTable);
+      return this.parseUsesDeclaration(symbolTable);
     } else if (token.isReserved("var")) {
-      this._expectReservedWord("var");
-      return this._parseVarDeclaration(symbolTable);
+      this.expectReservedWord("var");
+      return this.parseVarDeclaration(symbolTable);
     } else if (token.isReserved("const")) {
-      this._expectReservedWord("const");
-      return this._parseConstDeclaration(symbolTable);
+      this.expectReservedWord("const");
+      return this.parseConstDeclaration(symbolTable);
     } else if (token.isReserved("type")) {
-      this._expectReservedWord("type");
-      return this._parseTypeDeclaration(symbolTable);
+      this.expectReservedWord("type");
+      return this.parseTypeDeclaration(symbolTable);
     } else if (token.isReserved("procedure")) {
-      return [this._parseSubprogramDeclaration(symbolTable, Node.PROCEDURE)];
+      return [this.parseSubprogramDeclaration(symbolTable, Node.PROCEDURE)];
     } else if (token.isReserved("function")) {
-      return [this._parseSubprogramDeclaration(symbolTable, Node.FUNCTION)];
+      return [this.parseSubprogramDeclaration(symbolTable, Node.FUNCTION)];
     } else if (token.tokenType === Token.TK_EOF) {
       throw new PascalError(token, "unexpected end of file");
     } else {
@@ -2007,13 +2005,13 @@ var Pascal = (function() {
   };
 
   // Parse "uses" declaration, which is a list of identifiers. Returns a list of nodes.
-  Parser.prototype._parseUsesDeclaration = function (symbolTable) {
-    var usesToken = this._expectReservedWord("uses");
+  Parser.prototype.parseUsesDeclaration = function (symbolTable) {
+    var usesToken = this.expectReservedWord("uses");
 
     var nodes = [];
 
     do {
-      var token = this._expectIdentifier("expected module name");
+      var token = this.expectIdentifier("expected module name");
       var node = new Node(Node.USES, usesToken, {
         name: new Node(Node.IDENTIFIER, token)
       });
@@ -2023,30 +2021,30 @@ var Pascal = (function() {
       //modules.importModule(token.tokenValue, symbolTable);
 
       nodes.push(node);
-    } while (this._moreToCome(",", ";"));
+    } while (this.moreEntitiesToCome(",", ";"));
 
-    this._expectSymbol(";");
+    this.expectSymbol(";");
 
     return nodes;
   };
 
   // Parse "var" declaration, which is a variable and its type. Returns a list of nodes.
-  Parser.prototype._parseVarDeclaration = function (symbolTable) {
+  Parser.prototype.parseVarDeclaration = function (symbolTable) {
     var nodes = [];
 
     do {
       var startNode = nodes.length;
 
       do {
-        var nameToken = this._expectIdentifier("expected variable name");
+        var nameToken = this.expectIdentifier("expected variable name");
         var node = new Node(Node.VAR, null, {
           name: new Node(Node.IDENTIFIER, nameToken)
         });
         nodes.push(node);
-      } while (this._moreToCome(",", ":"));
+      } while (this.moreEntitiesToCome(",", ":"));
 
       // Skip colon.
-      this._expectSymbol(":");
+      this.expectSymbol(":");
 
       // Parse the variable's type.
       var type = this._parseType(symbolTable);
@@ -2061,7 +2059,7 @@ var Pascal = (function() {
       }
 
       // We always finish the line with a semicolon.
-      this._expectSymbol(";");
+      this.expectSymbol(";");
 
       // If the next token is an identifier, then we keep going.
     } while (this.scanner.lookAhead().tokenType === Token.TK_IDENTIFIER);
@@ -2071,12 +2069,12 @@ var Pascal = (function() {
 
   // Parse "const" declaration, which is an identifier, optional type, and
   // required value. Returns an array of nodes.
-  Parser.prototype._parseConstDeclaration = function (symbolTable) {
+  Parser.prototype.parseConstDeclaration = function (symbolTable) {
     var nodes = [];
 
     do {
       // Parse the constant name.
-      var token = this._expectIdentifier("expected constant name");
+      var token = this.expectIdentifier("expected constant name");
       var identifierNode = new Node(Node.IDENTIFIER, token);
 
       // Parse optional type.
@@ -2089,7 +2087,7 @@ var Pascal = (function() {
 
       // Parse value. How we do this depends on whether it's a typed constant,
       // and if it is, what kind.
-      this._expectSymbol("=");
+      this.expectSymbol("=");
 
       // Create the node.
       var node;
@@ -2107,7 +2105,7 @@ var Pascal = (function() {
 
         // XXX We need to verify type compatibility throughout here.
         if (type.nodeType === Node.ARRAY_TYPE) {
-          rawData = this._parseArrayConstant(symbolTable, type);
+          rawData = this.parseArrayConstant(symbolTable, type);
         } else if (type.nodeType === Node.RECORD_TYPE) {
           throw new PascalError(token, "constant records not supported");
         } else if (type.nodeType === Node.SIMPLE_TYPE) {
@@ -2133,7 +2131,7 @@ var Pascal = (function() {
       nodes.push(node);
 
       // Semicolon terminator.
-      this._expectSymbol(";");
+      this.expectSymbol(";");
     } while (this.scanner.lookAhead().tokenType === Token.TK_IDENTIFIER);
 
     return nodes;
@@ -2141,7 +2139,7 @@ var Pascal = (function() {
 
   // Parse an array constant, which is a parenthesized list of constants. These
   // can be nested for multi-dimensional arrays. Returns a RawData object.
-  Parser.prototype._parseArrayConstant = function (symbolTable, type) {
+  Parser.prototype.parseArrayConstant = function (symbolTable, type) {
     // The raw linear (in-memory) version of the data.
     var rawData = new RawData();
 
@@ -2151,7 +2149,7 @@ var Pascal = (function() {
     // expressions.
     var self = this;
     var parseDimension = function (d) {
-      self._expectSymbol("(");
+      self.expectSymbol("(");
 
       var low = type.ranges[d].getRangeLowBound();
       var high = type.ranges[d].getRangeHighBound();
@@ -2163,11 +2161,11 @@ var Pascal = (function() {
           parseDimension(d + 1);
         }
         if (i < high) {
-          self._expectSymbol(",");
+          self.expectSymbol(",");
         }
       }
 
-      self._expectSymbol(")");
+      self.expectSymbol(")");
     };
 
     // Start the recursion.
@@ -2178,7 +2176,7 @@ var Pascal = (function() {
 
   // Parse "type" declaration, which is an identifier and a type. Returns an
   // array of nodes.
-  Parser.prototype._parseTypeDeclaration = function (symbolTable) {
+  Parser.prototype.parseTypeDeclaration = function (symbolTable) {
     var nodes = [];
 
     // Pointer types are permitted to point to an undefined type name, as long as
@@ -2188,11 +2186,11 @@ var Pascal = (function() {
 
     do {
       // Parse identifier.
-      var token = this._expectIdentifier("expected type name");
+      var token = this.expectIdentifier("expected type name");
       var identifierNode = new Node(Node.IDENTIFIER, token);
 
       // Required equal sign.
-      var equalToken = this._expectSymbol("=");
+      var equalToken = this.expectSymbol("=");
 
       // Parse type.
       var type = this._parseType(symbolTable, incompleteTypes);
@@ -2208,7 +2206,7 @@ var Pascal = (function() {
       nodes.push(node);
 
       // Semicolon terminator.
-      this._expectSymbol(";");
+      this.expectSymbol(";");
     } while (this.scanner.lookAhead().tokenType === Token.TK_IDENTIFIER);
 
     // Fill in incomplete types. They're required to be defined by the end of
@@ -2223,15 +2221,15 @@ var Pascal = (function() {
   };
 
   // Parse procedure, function, or program declaration.
-  Parser.prototype._parseSubprogramDeclaration = function (symbolTable, nodeType) {
+  Parser.prototype.parseSubprogramDeclaration = function (symbolTable, nodeType) {
     // Get the string like "procedure", etc.
     var declType = Node.nodeLabel[nodeType];
 
     // Parse the opening token.
-    var procedureToken = this._expectReservedWord(declType);
+    var procedureToken = this.expectReservedWord(declType);
 
     // Parse the name.
-    var nameToken = this._expectIdentifier("expected " + declType + " name");
+    var nameToken = this.expectIdentifier("expected " + declType + " name");
 
     // From now on we're in our own table.
     var symbolTable = new SymbolTable(symbolTable);
@@ -2240,7 +2238,7 @@ var Pascal = (function() {
     var token = this.scanner.lookAhead();
     var parameters = [];
     if (token.isSymbol("(")) {
-      this._expectSymbol("(");
+      this.expectSymbol("(");
 
       var start = 0;
       do {
@@ -2248,19 +2246,19 @@ var Pascal = (function() {
 
         // See if we're passing this batch by reference.
         if (this.scanner.lookAhead().isReserved("var")) {
-          this._expectReservedWord("var");
+          this.expectReservedWord("var");
           byReference = true;
         }
 
         // Parameters can be batched by type.
         do {
-          token = this._expectIdentifier("expected parameter name");
+          token = this.expectIdentifier("expected parameter name");
           parameters.push(new Node(Node.PARAMETER, colon, {
             name: new Node(Node.IDENTIFIER, token),
             byReference: byReference
           }));
-        } while (this._moreToCome(",", ":"));
-        var colon = this._expectSymbol(":");
+        } while (this.moreEntitiesToCome(",", ":"));
+        var colon = this.expectSymbol(":");
 
         // Add the type to each parameter.
         var type = this._parseType(symbolTable);
@@ -2268,9 +2266,9 @@ var Pascal = (function() {
           parameters[i].type = type;
         }
         start = parameters.length;
-      } while (this._moreToCome(";", ")"));
+      } while (this.moreEntitiesToCome(";", ")"));
 
-      this._expectSymbol(")");
+      this.expectSymbol(")");
     }
 
     // Add parameters to our own symbol table.
@@ -2283,12 +2281,12 @@ var Pascal = (function() {
     // Parse the return type if it's a function.
     var returnType;
     if (nodeType === Node.FUNCTION) {
-      this._expectSymbol(":");
+      this.expectSymbol(":");
       returnType = this._parseType(symbolTable);
     } else {
       returnType = Node.voidType;
     }
-    this._expectSymbol(";");
+    this.expectSymbol(";");
 
     // Functions have an additional fake symbol: their own name, which maps
     // to the mark pointer location (return value).
@@ -2308,10 +2306,10 @@ var Pascal = (function() {
       Node.SUBPROGRAM_TYPE, type);
 
     // Parse declarations.
-    var declarations = this._parseDeclarations(symbolTable);
+    var declarations = this.parseDeclarations(symbolTable);
 
     // Parse begin/end block.
-    var block = this._parseBlock(symbolTable, "begin", "end");
+    var block = this.parseBlock(symbolTable, "begin", "end");
 
     // Make node.
     var node = new Node(nodeType, procedureToken, {
@@ -2324,15 +2322,15 @@ var Pascal = (function() {
     node.expressionType = type;
 
     // Semicolon terminator.
-    this._expectSymbol(nodeType === Node.PROGRAM ? "." : ";");
+    this.expectSymbol(nodeType === Node.PROGRAM ? "." : ";");
 
     return node;
   };
 
   // Parse a begin/end block. The startWord must be the next token. The endWord
   // will end the block and is eaten.
-  Parser.prototype._parseBlock = function (symbolTable, startWord, endWord) {
-    var token = this._expectReservedWord(startWord);
+  Parser.prototype.parseBlock = function (symbolTable, startWord, endWord) {
+    var token = this.expectReservedWord(startWord);
     var statements = [];
 
     var foundEnd = false;
@@ -2347,7 +2345,7 @@ var Pascal = (function() {
         this.scanner.next();
       } else {
         // Parse statement.
-        statements.push(this._parseStatement(symbolTable));
+        statements.push(this.parseStatement(symbolTable));
 
         // After an actual statement, we require a semicolon or end of block.
         token = this.scanner.lookAhead();
@@ -2363,32 +2361,32 @@ var Pascal = (function() {
   };
 
   // Parse a statement, such as a for loop, while loop, assignment, or procedure call.
-  Parser.prototype._parseStatement = function (symbolTable) {
+  Parser.prototype.parseStatement = function (symbolTable) {
     var token = this.scanner.lookAhead();
     var node;
 
     // Handle simple constructs.
     if (token.isReserved("if")) {
-      node = this._parseIfStatement(symbolTable);
+      node = this.parseIfStatement(symbolTable);
     } else if (token.isReserved("while")) {
-      node = this._parseWhileStatement(symbolTable);
+      node = this.parseWhileStatement(symbolTable);
     } else if (token.isReserved("repeat")) {
-      node = this._parseRepeatStatement(symbolTable);
+      node = this.parseRepeatStatement(symbolTable);
     } else if (token.isReserved("for")) {
-      node = this._parseForStatement(symbolTable);
+      node = this.parseForStatement(symbolTable);
     } else if (token.isReserved("begin")) {
-      node = this._parseBlock(symbolTable, "begin", "end");
+      node = this.parseBlock(symbolTable, "begin", "end");
     } else if (token.isReserved("exit")) {
-      node = this._parseExitStatement(symbolTable);
+      node = this.parseExitStatement(symbolTable);
     } else if (token.tokenType === Token.TK_IDENTIFIER) {
       // This could be an assignment or procedure call. Both start with an identifier.
-      node = this._parseVariable(symbolTable);
+      node = this.parseVariable(symbolTable);
 
       // See if this is an assignment or procedure call.
       token = this.scanner.lookAhead();
       if (token.isSymbol(":=")) {
         // It's an assignment.
-        node = this._parseAssignment(symbolTable, node);
+        node = this.parseAssignment(symbolTable, node);
       } else if (node.nodeType === Node.IDENTIFIER) {
         // Must be a procedure call.
         node = this._parseProcedureCall(symbolTable, node);
@@ -2407,9 +2405,9 @@ var Pascal = (function() {
   // "variable.fieldName", or a pointer dereference, like "variable^". In all
   // three cases the "variable" part is itself a variable. This function always
   // returns a node of type IDENTIFIER, ARRAY, FIELD_DESIGNATOR, or DEREFERENCE.
-  Parser.prototype._parseVariable = function (symbolTable) {
+  Parser.prototype.parseVariable = function (symbolTable) {
     // Variables always start with an identifier.
-    var identifierToken = this._expectIdentifier("expected identifier");
+    var identifierToken = this.expectIdentifier("expected identifier");
 
     // Create an identifier node for this token.
     var node = new Node(Node.IDENTIFIER, identifierToken);
@@ -2424,13 +2422,13 @@ var Pascal = (function() {
       var nextToken = this.scanner.lookAhead();
       if (nextToken.isSymbol("[")) {
         // Replace the node with an array node.
-        node = this._parseArrayDereference(symbolTable, node);
+        node = this.parseArrayDereference(symbolTable, node);
       } else if (nextToken.isSymbol(".")) {
         // Replace the node with a record designator node.
-        node = this._parseRecordDesignator(symbolTable, node);
+        node = this.parseRecordDesignator(symbolTable, node);
       } else if (nextToken.isSymbol("^")) {
         // Replace the node with a pointer dereference.
-        this._expectSymbol("^");
+        this.expectSymbol("^");
         var variable = node;
         if (!variable.expressionType.isSimpleType(defs.A)) {
           throw new PascalError(nextToken, "can only dereference pointers");
@@ -2449,8 +2447,8 @@ var Pascal = (function() {
   };
 
   // Parse an assignment. We already have the left-hand-side variable.
-  Parser.prototype._parseAssignment = function (symbolTable, variable) {
-    var assignToken = this._expectSymbol(":=");
+  Parser.prototype.parseAssignment = function (symbolTable, variable) {
+    var assignToken = this.expectSymbol(":=");
 
     var expression = this._parseExpression(symbolTable);
     return new Node(Node.ASSIGNMENT, assignToken, {
@@ -2470,7 +2468,7 @@ var Pascal = (function() {
     // Verify that it's a procedure.
     if (symbol.type.nodeType === Node.SUBPROGRAM_TYPE && symbol.type.returnType.isVoidType()) {
       // Parse optional arguments.
-      var argumentList = this._parseArguments(symbolTable, symbol.type);
+      var argumentList = this.parseArguments(symbolTable, symbol.type);
 
       // If the call is to the native function "New", then we pass a hidden second
       // parameter, the size of the object to allocate. The procedure needs that
@@ -2495,11 +2493,11 @@ var Pascal = (function() {
 
   // Parse an optional argument list. Returns a list of nodes. type is the
   // type of the subprogram being called.
-  Parser.prototype._parseArguments = function (symbolTable, type) {
+  Parser.prototype.parseArguments = function (symbolTable, type) {
     var argumentList = [];
 
     if (this.scanner.lookAhead().isSymbol("(")) {
-      this._expectSymbol("(");
+      this.expectSymbol("(");
       var token = this.scanner.lookAhead();
       if (token.isSymbol(")")) {
         // Empty arguments.
@@ -2522,7 +2520,7 @@ var Pascal = (function() {
           if (parameter && parameter.byReference) {
             // This has to be a variable, not any expression, since
             // we need its address.
-            argument = this._parseVariable(symbolTable);
+            argument = this.parseVariable(symbolTable);
 
             // Hack this "byReference" field that'll be used by
             // the compiler to pass the argument's address.
@@ -2537,8 +2535,8 @@ var Pascal = (function() {
           }
 
           argumentList.push(argument);
-        } while (this._moreToCome(",", ")"));
-        this._expectSymbol(")");
+        } while (this.moreEntitiesToCome(",", ")"));
+        this.expectSymbol(")");
       }
     }
 
@@ -2546,22 +2544,22 @@ var Pascal = (function() {
   }
 
   // Parse an if statement.
-  Parser.prototype._parseIfStatement = function (symbolTable) {
-    var token = this._expectReservedWord("if");
+  Parser.prototype.parseIfStatement = function (symbolTable) {
+    var token = this.expectReservedWord("if");
 
     var expression = this._parseExpression(symbolTable);
     if (!expression.expressionType.isBooleanType()) {
       throw new PascalError(expression.token, "if condition must be a boolean");
     }
 
-    this._expectReservedWord("then");
-    var thenStatement = this._parseStatement(symbolTable);
+    this.expectReservedWord("then");
+    var thenStatement = this.parseStatement(symbolTable);
 
     var elseStatement = null;
     var elseToken = this.scanner.lookAhead();
     if (elseToken.isReserved("else")) {
-      this._expectReservedWord("else");
-      var elseStatement = this._parseStatement(symbolTable);
+      this.expectReservedWord("else");
+      var elseStatement = this.parseStatement(symbolTable);
     }
 
     return new Node(Node.IF, token, {
@@ -2572,8 +2570,8 @@ var Pascal = (function() {
   };
 
   // Parse a while statement.
-  Parser.prototype._parseWhileStatement = function (symbolTable) {
-    var whileToken = this._expectReservedWord("while");
+  Parser.prototype.parseWhileStatement = function (symbolTable) {
+    var whileToken = this.expectReservedWord("while");
 
     // Parse the expression that keeps the loop going.
     var expression = this._parseExpression(symbolTable);
@@ -2582,10 +2580,10 @@ var Pascal = (function() {
     }
 
     // The "do" keyword is required.
-    this._expectReservedWord("do", "expected \"do\" for \"while\" loop");
+    this.expectReservedWord("do", "expected \"do\" for \"while\" loop");
 
     // Parse the statement. This can be a begin/end pair.
-    var statement = this._parseStatement(symbolTable);
+    var statement = this.parseStatement(symbolTable);
 
     // Create the node.
     return new Node(Node.WHILE, whileToken, {
@@ -2595,8 +2593,8 @@ var Pascal = (function() {
   };
 
   // Parse a repeat/until statement.
-  Parser.prototype._parseRepeatStatement = function (symbolTable) {
-    var block = this._parseBlock(symbolTable, "repeat", "until");
+  Parser.prototype.parseRepeatStatement = function (symbolTable) {
+    var block = this.parseBlock(symbolTable, "repeat", "until");
     var expression = this._parseExpression(symbolTable);
     if (!expression.expressionType.isBooleanType()) {
       throw new PascalError(node.token, "repeat condition must be a boolean");
@@ -2609,22 +2607,22 @@ var Pascal = (function() {
   };
 
   // Parse a for statement.
-  Parser.prototype._parseForStatement = function (symbolTable) {
-    var token = this._expectReservedWord("for");
+  Parser.prototype.parseForStatement = function (symbolTable) {
+    var token = this.expectReservedWord("for");
 
-    var loopVariableToken = this._expectIdentifier("expected identifier for \"for\" loop");
-    this._expectSymbol(":=");
+    var loopVariableToken = this.expectIdentifier("expected identifier for \"for\" loop");
+    this.expectSymbol(":=");
     var fromExpr = this._parseExpression(symbolTable);
     var downto = this.scanner.lookAhead().isReserved("downto");
     if (downto) {
-      this._expectReservedWord("downto");
+      this.expectReservedWord("downto");
     } else {
       // Default error message if it's neither.
-      this._expectReservedWord("to");
+      this.expectReservedWord("to");
     }
     var toExpr = this._parseExpression(symbolTable);
-    this._expectReservedWord("do");
-    var body = this._parseStatement(symbolTable);
+    this.expectReservedWord("do");
+    var body = this.parseStatement(symbolTable);
 
     // Get the symbol for the loop variable.
     var symbolLookup = symbolTable.getSymbol(loopVariableToken);
@@ -2646,8 +2644,8 @@ var Pascal = (function() {
   };
 
   // Parse an exit statement.
-  Parser.prototype._parseExitStatement = function (symbolTable) {
-    var token = this._expectReservedWord("exit");
+  Parser.prototype.parseExitStatement = function (symbolTable) {
+    var token = this.expectReservedWord("exit");
 
     return new Node(Node.EXIT, token);
   };
@@ -2662,15 +2660,15 @@ var Pascal = (function() {
 
     if (token.isReserved("array")) {
       // Array type.
-      this._expectSymbol("[");
+      this.expectSymbol("[");
       var ranges = [];
       // Parse multiple ranges.
       do {
-        var range = this._parseRange(symbolTable);
+        var range = this.parseRange(symbolTable);
         ranges.push(range);
-      } while (this._moreToCome(",", "]"));
-      this._expectSymbol("]");
-      this._expectReservedWord("of");
+      } while (this.moreEntitiesToCome(",", "]"));
+      this.expectSymbol("]");
+      this.expectReservedWord("of");
       var elementType = this._parseType(symbolTable, incompleteTypes);
 
       node = new Node(Node.ARRAY_TYPE, token, {
@@ -2678,9 +2676,9 @@ var Pascal = (function() {
         ranges: ranges
       });
     } else if (token.isReserved("record")) {
-      node = this._parseRecordType(symbolTable, token, incompleteTypes);
+      node = this.parseRecordType(symbolTable, token, incompleteTypes);
     } else if (token.isSymbol("^")) {
-      var typeNameToken = this._expectIdentifier("expected type identifier");
+      var typeNameToken = this.expectIdentifier("expected type identifier");
       var type;
       try {
         type = symbolTable.getType(typeNameToken).symbol.type;
@@ -2726,7 +2724,7 @@ var Pascal = (function() {
   };
 
   // Parse a record type definition. See _parseType() for an explanation of "incompleteTypes".
-  Parser.prototype._parseRecordType = function (symbolTable, token, incompleteTypes) {
+  Parser.prototype.parseRecordType = function (symbolTable, token, incompleteTypes) {
     // A record is a list of fields.
     var fields = [];
 
@@ -2737,7 +2735,7 @@ var Pascal = (function() {
         this.scanner.next();
       } else if (token.isReserved("end")) {
         // End of record.
-        this._expectReservedWord("end");
+        this.expectReservedWord("end");
         break;
       } else {
         fields.push.apply(fields,
@@ -2770,16 +2768,16 @@ var Pascal = (function() {
     var fields = [];
 
     do {
-      var nameToken = this._expectIdentifier("expected field name");
+      var nameToken = this.expectIdentifier("expected field name");
       var field = new Node(Node.FIELD, fieldToken, {
         name: new Node(Node.IDENTIFIER, nameToken),
         offset: 0
       });
       fields.push(field);
-    } while (this._moreToCome(",", ":"));
+    } while (this.moreEntitiesToCome(",", ":"));
 
     // Skip colon.
-    this._expectSymbol(":");
+    this.expectSymbol(":");
 
     // Parse the fields's type.
     var type = this._parseType(symbolTable, incompleteTypes);
@@ -2793,9 +2791,9 @@ var Pascal = (function() {
   };
 
   // Parses a range, such as "5..10". Either can be a constant expression.
-  Parser.prototype._parseRange = function (symbolTable) {
+  Parser.prototype.parseRange = function (symbolTable) {
     var low = this._parseExpression(symbolTable);
-    var token = this._expectSymbol("..");
+    var token = this.expectSymbol("..");
     var high = this._parseExpression(symbolTable);
 
     return new Node(Node.RANGE, token, {low: low, high: high});
@@ -2808,29 +2806,29 @@ var Pascal = (function() {
 
   // Parses a relational expression.
   Parser.prototype._parseRelationalExpression = function (symbolTable) {
-    var node = this._parseAdditiveExpression(symbolTable);
+    var node = this.parseAdditiveExpression(symbolTable);
 
     while (true) {
       var token = this.scanner.lookAhead();
       if (token.isSymbol("=")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.EQUALITY,
-          this._parseAdditiveExpression).withExpressionType(Node.booleanType);
+        node = this.createBinaryNode(symbolTable, token, node, Node.EQUALITY,
+          this.parseAdditiveExpression).withExpressionType(Node.booleanType);
       } else if (token.isSymbol("<>")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.INEQUALITY,
-          this._parseAdditiveExpression).withExpressionType(Node.booleanType);
+        node = this.createBinaryNode(symbolTable, token, node, Node.INEQUALITY,
+          this.parseAdditiveExpression).withExpressionType(Node.booleanType);
       } else if (token.isSymbol(">")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.GREATER_THAN,
-          this._parseAdditiveExpression).withExpressionType(Node.booleanType);
+        node = this.createBinaryNode(symbolTable, token, node, Node.GREATER_THAN,
+          this.parseAdditiveExpression).withExpressionType(Node.booleanType);
       } else if (token.isSymbol("<")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.LESS_THAN,
-          this._parseAdditiveExpression).withExpressionType(Node.booleanType);
+        node = this.createBinaryNode(symbolTable, token, node, Node.LESS_THAN,
+          this.parseAdditiveExpression).withExpressionType(Node.booleanType);
       } else if (token.isSymbol(">=")) {
-        node = this._createBinaryNode(symbolTable, token, node,
+        node = this.createBinaryNode(symbolTable, token, node,
           Node.GREATER_THAN_OR_EQUAL_TO,
-          this._parseAdditiveExpression).withExpressionType(Node.booleanType);
+          this.parseAdditiveExpression).withExpressionType(Node.booleanType);
       } else if (token.isSymbol("<=")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.LESS_THAN_OR_EQUAL_TO,
-          this._parseAdditiveExpression).withExpressionType(Node.booleanType);
+        node = this.createBinaryNode(symbolTable, token, node, Node.LESS_THAN_OR_EQUAL_TO,
+          this.parseAdditiveExpression).withExpressionType(Node.booleanType);
       } else {
         break;
       }
@@ -2840,20 +2838,20 @@ var Pascal = (function() {
   };
 
   // Parses an additive expression.
-  Parser.prototype._parseAdditiveExpression = function (symbolTable) {
-    var node = this._parseMultiplicativeExpression(symbolTable);
+  Parser.prototype.parseAdditiveExpression = function (symbolTable) {
+    var node = this.parseMultiplicativeExpression(symbolTable);
 
     while (true) {
       var token = this.scanner.lookAhead();
       if (token.isSymbol("+")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.ADDITION,
-          this._parseMultiplicativeExpression);
+        node = this.createBinaryNode(symbolTable, token, node, Node.ADDITION,
+          this.parseMultiplicativeExpression);
       } else if (token.isSymbol("-")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.SUBTRACTION,
-          this._parseMultiplicativeExpression);
+        node = this.createBinaryNode(symbolTable, token, node, Node.SUBTRACTION,
+          this.parseMultiplicativeExpression);
       } else if (token.isReserved("or")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.OR,
-          this._parseMultiplicativeExpression,
+        node = this.createBinaryNode(symbolTable, token, node, Node.OR,
+          this.parseMultiplicativeExpression,
           Node.booleanType);
       } else {
         break;
@@ -2864,26 +2862,26 @@ var Pascal = (function() {
   };
 
   // Parses a multiplicative expression.
-  Parser.prototype._parseMultiplicativeExpression = function (symbolTable) {
-    var node = this._parseUnaryExpression(symbolTable);
+  Parser.prototype.parseMultiplicativeExpression = function (symbolTable) {
+    var node = this.parseUnaryExpression(symbolTable);
 
     while (true) {
       var token = this.scanner.lookAhead();
       if (token.isSymbol("*")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.MULTIPLICATION,
-          this._parseUnaryExpression);
+        node = this.createBinaryNode(symbolTable, token, node, Node.MULTIPLICATION,
+          this.parseUnaryExpression);
       } else if (token.isSymbol("/")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.DIVISION,
-          this._parseUnaryExpression, Node.realType);
+        node = this.createBinaryNode(symbolTable, token, node, Node.DIVISION,
+          this.parseUnaryExpression, Node.realType);
       } else if (token.isReserved("div")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.INTEGER_DIVISION,
-          this._parseUnaryExpression, Node.integerType);
+        node = this.createBinaryNode(symbolTable, token, node, Node.INTEGER_DIVISION,
+          this.parseUnaryExpression, Node.integerType);
       } else if (token.isReserved("mod")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.MOD,
-          this._parseUnaryExpression, Node.integerType);
+        node = this.createBinaryNode(symbolTable, token, node, Node.MOD,
+          this.parseUnaryExpression, Node.integerType);
       } else if (token.isReserved("and")) {
-        node = this._createBinaryNode(symbolTable, token, node, Node.AND,
-          this._parseUnaryExpression, Node.booleanType);
+        node = this.createBinaryNode(symbolTable, token, node, Node.AND,
+          this.parseUnaryExpression, Node.booleanType);
       } else {
         break;
       }
@@ -2893,30 +2891,30 @@ var Pascal = (function() {
   };
 
   // Parses a unary expression, such as a negative sign or a "not".
-  Parser.prototype._parseUnaryExpression = function (symbolTable) {
+  Parser.prototype.parseUnaryExpression = function (symbolTable) {
     var node;
 
     // Parse unary operator.
     var token = this.scanner.lookAhead();
     if (token.isSymbol("-")) {
       // Negation.
-      this._expectSymbol("-");
+      this.expectSymbol("-");
 
-      var expression = this._parseUnaryExpression(symbolTable);
+      var expression = this.parseUnaryExpression(symbolTable);
       node = new Node(Node.NEGATIVE, token, {
         expression: expression
       }).withExpressionTypeFrom(expression);
     } else if (token.isSymbol("+")) {
       // Unary plus.
-      this._expectSymbol("+");
+      this.expectSymbol("+");
 
       // Nothing to wrap sub-expression with.
-      node = this._parseUnaryExpression(symbolTable);
+      node = this.parseUnaryExpression(symbolTable);
     } else if (token.isReserved("not")) {
       // Logical not.
-      this._expectReservedWord("not");
+      this.expectReservedWord("not");
 
-      var expression = this._parseUnaryExpression(symbolTable);
+      var expression = this.parseUnaryExpression(symbolTable);
       if (!expression.expressionType.isBooleanType()) {
         throw new PascalError(expression.token, "not operand must be a boolean");
       }
@@ -2924,7 +2922,7 @@ var Pascal = (function() {
         expression:expression
       }).withExpressionTypeFrom(expression);
     } else {
-      node = this._parsePrimaryExpression(symbolTable);
+      node = this.parsePrimaryExpression(symbolTable);
     }
 
     return node;
@@ -2932,7 +2930,7 @@ var Pascal = (function() {
 
   // Parses an atomic expression, such as a number, identifier, or
   // parenthesized expression.
-  Parser.prototype._parsePrimaryExpression = function (symbolTable) {
+  Parser.prototype.parsePrimaryExpression = function (symbolTable) {
     var token = this.scanner.lookAhead();
     var node;
 
@@ -2964,7 +2962,7 @@ var Pascal = (function() {
       });
     } else if (token.tokenType === Token.TK_IDENTIFIER) {
       // Parse a variable (identifier, array dereference, etc.).
-      node = this._parseVariable(symbolTable);
+      node = this.parseVariable(symbolTable);
 
       // What we do next depends on the variable. If it's just an identifier,
       // then it could be a function call, a function call with arguments,
@@ -2996,7 +2994,7 @@ var Pascal = (function() {
           // Make the function call node with the optional arguments.
           node = new Node(Node.FUNCTION_CALL, node.token, {
             name: node,
-            argumentList: this._parseArguments(symbolTable, symbol.type)
+            argumentList: this.parseArguments(symbolTable, symbol.type)
           });
 
           // Type of the function call is the return type of the function.
@@ -3038,9 +3036,9 @@ var Pascal = (function() {
       }
     } else if (token.isSymbol("(")) {
       // Parenthesized expression.
-      this._expectSymbol("(");
+      this.expectSymbol("(");
       node = this._parseExpression(symbolTable);
-      this._expectSymbol(")");
+      this.expectSymbol(")");
     } else if (token.isSymbol("@")) {
       // This doesn't work. It's not clear what the type of the resulting
       // expression is. It should be a pointer to a (say) integer, but
@@ -3052,8 +3050,8 @@ var Pascal = (function() {
       // it.
       throw new PascalError(token, "the @ operator is not supported");
 
-      this._expectSymbol("@");
-      var variable = this._parseVariable(symbolTable);
+      this.expectSymbol("@");
+      var variable = this.parseVariable(symbolTable);
       node = new Node(Node.ADDRESS_OF, token, {
         variable: variable
       });
@@ -3070,19 +3068,19 @@ var Pascal = (function() {
   };
 
   // Parse an array dereference, such as "a[2,3+4]".
-  Parser.prototype._parseArrayDereference = function (symbolTable, variable) {
+  Parser.prototype.parseArrayDereference = function (symbolTable, variable) {
     // Make sure the variable is an array.
     if (variable.expressionType.nodeType !== Node.ARRAY_TYPE) {
       throw new PascalError(variable.token, "expected an array type");
     }
 
-    var arrayToken = this._expectSymbol("[");
+    var arrayToken = this.expectSymbol("[");
     var indices = [];
     do {
       // Indices must be integers.
       indices.push(this._parseExpression(symbolTable).castToType(Node.integerType));
-    } while (this._moreToCome(",", "]"));
-    this._expectSymbol("]");
+    } while (this.moreEntitiesToCome(",", "]"));
+    this.expectSymbol("]");
 
     var array = new Node(Node.ARRAY, arrayToken, {
       variable: variable,
@@ -3096,17 +3094,17 @@ var Pascal = (function() {
   };
 
   // Parse a record designator, such as "a.b".
-  Parser.prototype._parseRecordDesignator = function (symbolTable, variable) {
+  Parser.prototype.parseRecordDesignator = function (symbolTable, variable) {
     // Make sure the variable so far is a record.
     var recordType = variable.expressionType;
     if (recordType.nodeType !== Node.RECORD_TYPE) {
       throw new PascalError(nextToken, "expected a record type");
     }
 
-    var dotToken = this._expectSymbol(".", "expected a dot");
+    var dotToken = this.expectSymbol(".", "expected a dot");
 
     // Parse the field name.
-    var fieldToken = this._expectIdentifier("expected a field name");
+    var fieldToken = this.expectIdentifier("expected a field name");
 
     // Get the field for this identifier.
     var field = recordType.getField(fieldToken);
@@ -3132,14 +3130,14 @@ var Pascal = (function() {
   //      and return an expression node.
   // forceType: optional type node (e.g., Node.realType). Both operands will be cast
   //      naturally to this type and the node will be of this type.
-  Parser.prototype._createBinaryNode = function (symbolTable, token, node,
+  Parser.prototype.createBinaryNode = function (symbolTable, token, node,
                                                  nodeType, rhsFn, forceType) {
 
     // It must be next, we've only peeked at it.
     if (token.tokenType === Token.TK_SYMBOL) {
-      this._expectSymbol(token.tokenValue);
+      this.expectSymbol(token.tokenValue);
     } else {
-      this._expectReservedWord(token.tokenValue);
+      this.expectReservedWord(token.tokenValue);
     }
 
     var operand1 = node;
@@ -3151,7 +3149,7 @@ var Pascal = (function() {
       expressionType = forceType;
     } else {
       // Figure it out from the operands.
-      expressionType = this._getCompatibleType(token,
+      expressionType = this.getCompatibleType(token,
         operand1.expressionType,
         operand2.expressionType);
     }
@@ -3169,7 +3167,7 @@ var Pascal = (function() {
   // integer and another is real, returns a real, since you can implicitly
   // cast from integer to real. Throws if a compatible type can't
   // be found. Token is passed in just for error reporting.
-  Parser.prototype._getCompatibleType = function (token, type1, type2) {
+  Parser.prototype.getCompatibleType = function (token, type1, type2) {
     // Must have them defined.
     if (!type1) {
       throw new PascalError(token, "can't find compatible types for type1=null");
@@ -4446,9 +4444,9 @@ var Pascal = (function() {
         },
         success: function (contents) {
 
-          var DUMP_TREE = true;
-          var DUMP_BYTECODE = true;
-          var DEBUG_TRACE = true;
+          var DUMP_TREE = false;
+          var DUMP_BYTECODE = false;
+          var DEBUG_TRACE = false;
 
           var stream = new Stream(contents);
           var scanner = new CommentStripper(new Scanner(stream));
