@@ -4,6 +4,10 @@
  * @author Sahat Yalkabov
  * @license MIT
  */
+
+
+
+
 var Pascal = (function() {
 
   /**
@@ -339,37 +343,36 @@ var Pascal = (function() {
 
     // Add token info.
     if (this.token) {
-      message += " (\"" + this.token.tokenValue + "\", line " + this.token.lineNumber + ")";
+      message += " (\"" + this.token.tokenValue + "\", line " + this.token.line + ")";
     }
 
     return message;
   };
 
-  var Token = function (value, type) {
+  function Token(value, type) {
     this.tokenValue = value;
     this.tokenType = type;
-    this.lineNumber = -1;
-  };
+    this.line = -1;
+  }
 
-  Token.T_IDENTIFIER = 0;
-  Token.T_NUMBER = 1;
-  Token.T_SYMBOL = 2; // T_OP
-  Token.T_COMMENT = 3;
-  Token.T_STRING = 4;
-  Token.T_EOF = 5;
-  Token.T_RESERVED = 6;
+  Token.TK_IDENTIFIER = 0;
+  Token.TK_NUMBER = 1;
+  Token.TK_SYMBOL = 2;
+  Token.TK_COMMENT = 3;
+  Token.TK_STRING = 4;
+  Token.TK_EOF = 5;
+  Token.TK_RESERVED = 6;
 
   Token.prototype.isEqualTo = function(second) {
-    return this.tokenType === second.tokenType &&
-      this.tokenValue === second.tokenValue;
+    return this.tokenType === second.tokenType && this.tokenValue === second.tokenValue;
   };
 
   Token.prototype.isSymbol = function(symbol) {
-    return this.tokenType === Token.T_SYMBOL && this.tokenValue === symbol;
+    return this.tokenType === Token.TK_SYMBOL && this.tokenValue === symbol;
   };
 
   Token.prototype.isReserved = function(reservedWord) {
-    return this.tokenType === Token.T_RESERVED &&
+    return this.tokenType === Token.TK_RESERVED &&
       this.tokenValue.toLowerCase() === reservedWord.toLowerCase();
   };
 
@@ -402,12 +405,16 @@ var Pascal = (function() {
     return RESERVED.indexOf(value.toLowerCase()) !== -1;
   };
 
-  var Lexer = function (stream) {
+  /**
+   * Scanner
+   * @param stream
+   */
+  function Scanner(stream) {
     this.stream = stream;
     this.nextToken = null;
-  };
+  }
 
-  Lexer.prototype.next = function () {
+  Scanner.prototype.next = function () {
     var token = this.lookAhead();
 
     // We've used up this token, force the next next() or lookAhead() to fetch another.
@@ -417,25 +424,25 @@ var Pascal = (function() {
   };
 
   // Peeks at the next token.
-  Lexer.prototype.lookAhead = function () {
+  Scanner.prototype.lookAhead = function () {
     if (!this.nextToken) this.nextToken = this.scanOneToken();
     return this.nextToken;
   };
 
   // Always gets another token.
-  Lexer.prototype.scanOneToken = function () {
+  Scanner.prototype.scanOneToken = function () {
     var lineNumber;
     var ch = this.stream.next();
 
     // Skip whitespace.
     while (isWhitespace(ch)) {
-      lineNumber = this.stream.lineNumber;
+      lineNumber = this.stream.line;
 
       ch = this.stream.next();
       console.log(ch);
 
       if (ch === -1) {
-        return new Token(null, Token.T_EOF);
+        return new Token(null, Token.TK_EOF);
       }
     }
 
@@ -457,7 +464,7 @@ var Pascal = (function() {
         }
         value += ch;
       }
-      token = new Token(value, Token.T_COMMENT);
+      token = new Token(value, Token.TK_COMMENT);
     }
 
     if (token === null && isValidIdentifierStart(ch)) {
@@ -471,7 +478,7 @@ var Pascal = (function() {
         }
         this.stream.next();
       }
-      var tokenType = isReserved(value) ? Token.T_RESERVED : Token.T_IDENTIFIER;
+      var tokenType = isReserved(value) ? Token.TK_RESERVED : Token.TK_IDENTIFIER;
       token = new Token(value, tokenType);
     }
     if (token === null && (isDigit(ch) || ch === ".")) {
@@ -481,10 +488,10 @@ var Pascal = (function() {
         if (nextCh === ".") {
           // Two dots.
           this.stream.next();
-          token = new Token("..", Token.T_SYMBOL);
+          token = new Token("..", Token.TK_SYMBOL);
         } else if (!isDigit(nextCh)) {
           // Single dot.
-          token = new Token(".", Token.T_SYMBOL);
+          token = new Token(".", Token.TK_SYMBOL);
         } else {
           // It's a number, leave token null.
         }
@@ -505,7 +512,7 @@ var Pascal = (function() {
             // of a ".." symbol. Peek twice and push back.
             this.stream.next();
             var nextCh = this.stream.lookAhead();
-            this.stream.pushBack(ch);
+            this.stream.previous(ch);
             if (nextCh === ".") {
               // Double dot, end of number.
               break;
@@ -524,7 +531,7 @@ var Pascal = (function() {
           // XXX Need to parse scientific notation.
           this.stream.next();
         }
-        token = new Token(value, Token.T_NUMBER);
+        token = new Token(value, Token.TK_NUMBER);
       }
     }
     if (token === null && ch === "{") {
@@ -542,7 +549,7 @@ var Pascal = (function() {
           break;
         }
       }
-      token = new Token(value, Token.T_COMMENT);
+      token = new Token(value, Token.TK_COMMENT);
     }
     if (token === null && ch === "'") {
       // String literal.
@@ -567,25 +574,25 @@ var Pascal = (function() {
           break;
         }
       }
-      token = new Token(value, Token.T_STRING);
+      token = new Token(value, Token.TK_STRING);
     }
     if (token === null) {
       // Unknown token.
-      token = new Token(ch, Token.T_SYMBOL);
-      token.lineNumber = lineNumber;
+      token = new Token(ch, Token.TK_SYMBOL);
+      token.line = lineNumber;
       throw new PascalError(token, "unknown symbol");
     }
 
-    token.lineNumber = lineNumber;
+    token.line = lineNumber;
 
     console.log("Fetched token \"" + token.tokenValue + "\" of type " +
-      token.tokenType + " on line " + token.lineNumber);
+      token.tokenType + " on line " + token.line);
 
     return token;
   };
 
   // Find the longest symbols in the specified list. Returns a Token or null.
-  Lexer.prototype.maximalMunch = function (ch, symbols) {
+  Scanner.prototype.maximalMunch = function (ch, symbols) {
     var longestSymbol = null;
     var nextCh = this.stream.lookAhead();
     var twoCh = nextCh === -1 ? ch : ch + nextCh;
@@ -609,28 +616,22 @@ var Pascal = (function() {
       this.stream.next();
     }
 
-    return new Token(longestSymbol, Token.T_SYMBOL);
+    return new Token(longestSymbol, Token.TK_SYMBOL);
   };
 
-  var Stream = function (input) {
+  function Stream(input) {
     this.input = input;
     this.position = 0;
-    this.lineNumber = 1;
-  };
+    this.line = 1;
+  }
 
-  // Returns the next character, or -1 on end of file.
   Stream.prototype.next = function () {
-    var ch = this.lookAhead();
-    if (ch == "\n") {
-      this.lineNumber++;
-    }
-    if (ch != -1) {
-      this.position++;
-    }
-    return ch;
+    var char = this.lookAhead();
+    if (char === '\n') this.line++;
+    if (char !== -1) this.position++;
+    return char;
   };
 
-  // Peeks at the next character, or -1 on end of file.
   Stream.prototype.lookAhead = function () {
     if (this.position >= this.input.length) {
       return -1;
@@ -638,15 +639,14 @@ var Pascal = (function() {
     return this.input[this.position];
   };
 
-  // Inverse of "next()" method.
-  Stream.prototype.pushBack = function (ch) {
+  Stream.prototype.previous = function (char) {
     if (this.position === 0) {
-      throw new "Can't push back at start of stream";
+      throw new Error("Can't push back at start of stream");
     }
     this.position--;
     // Sanity check.
-    if (this.input[this.position] != ch) {
-      throw new "Pushed back character doesn't match";
+    if (this.input[this.position] != char) {
+      throw new Error("Pushed back character doesn't match");
     }
   };
 
@@ -686,8 +686,8 @@ var Pascal = (function() {
 
   // Basic types. These don't have additional fields, but their token usually has a value.
   Node.IDENTIFIER = 0;
-  Node.T_NUMBER = 1;
-  Node.T_STRING = 2;
+  Node.TK_NUMBER = 1;
+  Node.TK_STRING = 2;
   Node.BOOLEAN = 3;
   Node.POINTER = 4;
 
@@ -912,9 +912,9 @@ var Pascal = (function() {
     return this.nodeType === Node.SIMPLE_TYPE && this.typeCode === typeCode;
   };
 
-  // Given a T_NUMBER node, returns the value as a float.
+  // Given a TK_NUMBER node, returns the value as a float.
   Node.prototype.getNumber = function () {
-    if (this.nodeType === Node.T_NUMBER) {
+    if (this.nodeType === Node.TK_NUMBER) {
       return parseFloat(this.token.tokenValue);
     } else {
       throw new PascalError(this.token, "expected a number");
@@ -972,7 +972,7 @@ var Pascal = (function() {
       throw new PascalError(this.token, "expected a record");
     }
 
-    if (fieldToken.tokenType !== Token.T_IDENTIFIER) {
+    if (fieldToken.tokenType !== Token.TK_IDENTIFIER) {
       throw new PascalError(fieldToken, "expected a field name");
     }
 
@@ -992,11 +992,11 @@ var Pascal = (function() {
   // expression must evaluate to a scalar constant.
   Node.prototype.getConstantValue = function () {
     switch (this.nodeType) {
-      case Node.T_NUMBER:
+      case Node.TK_NUMBER:
         return this.getNumber();
       case Node.BOOLEAN:
         return this.getBoolean();
-      case Node.T_STRING:
+      case Node.TK_STRING:
         return this.token.tokenValue;
       default:
         throw new PascalError(this.token, "cannot get constant value of node type " +
@@ -1074,20 +1074,20 @@ var Pascal = (function() {
 
   // Useful methods.
   Node.makeIdentifierNode = function (name) {
-    return new Node(Node.IDENTIFIER, new Token(name, Token.T_IDENTIFIER));
+    return new Node(Node.IDENTIFIER, new Token(name, Token.TK_IDENTIFIER));
   };
   Node.makeNumberNode = function (value) {
-    return new Node(Node.T_NUMBER, new Token("" + value, Token.T_NUMBER));
+    return new Node(Node.TK_NUMBER, new Token("" + value, Token.TK_NUMBER));
   };
   Node.makeBooleanNode = function (value) {
-    return new Node(Node.BOOLEAN, new Token(value ? "True" : "False", Token.T_IDENTIFIER));
+    return new Node(Node.BOOLEAN, new Token(value ? "True" : "False", Token.TK_IDENTIFIER));
   };
   Node.makePointerNode = function (value) {
     // Nil is the only constant pointer.
     if (value !== null) {
       throw new PascalError(null, "nil is the only pointer constant");
     }
-    return new Node(Node.POINTER, new Token("Nil", Token.T_IDENTIFIER));
+    return new Node(Node.POINTER, new Token("Nil", Token.TK_IDENTIFIER));
   };
 
   // Maps a node type (e.g., Node.PROGRAM) to a string ("program", "procedure", or "function").
@@ -1102,12 +1102,12 @@ var Pascal = (function() {
 
     switch (this.nodeType) {
       case Node.IDENTIFIER:
-      case Node.T_NUMBER:
+      case Node.TK_NUMBER:
       case Node.BOOLEAN:
       case Node.POINTER:
         s += this.token.tokenValue;
         break;
-      case Node.T_STRING:
+      case Node.TK_STRING:
         s += "'" + this.token.tokenValue + "'";
         break;
       case Node.PROGRAM:
@@ -1451,7 +1451,7 @@ var Pascal = (function() {
 
       // Constants and functions.
       symbolTable.addNativeConstant("Nil", null,
-        new Node(Node.SIMPLE_TYPE, new Token("Nil", Token.T_IDENTIFIER), {
+        new Node(Node.SIMPLE_TYPE, new Token("Nil", Token.TK_IDENTIFIER), {
           typeCode: defs.A,
           typeName: null,  // Important -- this is what makes this nil.
           type: null
@@ -1654,15 +1654,15 @@ var Pascal = (function() {
     return "Istore:\n" + lines.join("\n") + "\n";
   };
 
-  var CommentStripper = function (lexer) {
-    this.lexer = lexer;
-  };
+  function CommentStripper(scanner) {
+    this.scanner = scanner;
+  }
 
   // Returns the next token.
   CommentStripper.prototype.next = function () {
     while (true) {
-      var token = this.lexer.next();
-      if (token.tokenType != Token.T_COMMENT) {
+      var token = this.scanner.next();
+      if (token.tokenType != Token.TK_COMMENT) {
         return token;
       }
     }
@@ -1671,12 +1671,12 @@ var Pascal = (function() {
   // Peeks at the next token.
   CommentStripper.prototype.lookAhead = function () {
     while (true) {
-      var token = this.lexer.lookAhead();
-      if (token.tokenType != Token.T_COMMENT) {
+      var token = this.scanner.lookAhead();
+      if (token.tokenType != Token.TK_COMMENT) {
         return token;
       } else {
         // Skip the comment.
-        this.lexer.next();
+        this.scanner.next();
       }
     }
   };
@@ -1901,8 +1901,8 @@ var Pascal = (function() {
     return symbolTable;
   };
 
-  var Parser = function (lexer) {
-    this.lexer = lexer;
+  var Parser = function (scanner) {
+    this.scanner = scanner;
   };
 
   // Parse an entire Pascal program.
@@ -1917,10 +1917,10 @@ var Pascal = (function() {
   // true and eats the symbol if it sees the separator; returns false and
   // leaves the symbol if it sees the terminator. Throws if it sees anything else.
   Parser.prototype._moreToCome = function (separator, terminator) {
-    var token = this.lexer.lookAhead();
+    var token = this.scanner.lookAhead();
     if (token.isSymbol(separator)) {
       // More to come. Eat the separator.
-      this.lexer.next();
+      this.scanner.next();
       return true;
     } else if (token.isSymbol(terminator)) {
       // We're done. Leave the terminator.
@@ -1934,7 +1934,7 @@ var Pascal = (function() {
   // Eats the next symbol. If it's not this reserved word, raises an error with this
   // message. Returns the token.
   Parser.prototype._expectReservedWord = function (reservedWord, message) {
-    var token = this.lexer.next();
+    var token = this.scanner.next();
     message = message || ("expected reserved word \"" + reservedWord + "\"");
     if (!token.isReserved(reservedWord)) {
       throw new PascalError(token, message);
@@ -1945,8 +1945,8 @@ var Pascal = (function() {
   // Eats the next symbol (such as ":="). If it's not this symbol, raises an
   // error with this message. Returns the token.
   Parser.prototype._expectSymbol = function (symbol, message) {
-    var token = this.lexer.next();
-    if (token.tokenType !== Token.T_SYMBOL || token.tokenValue !== symbol) {
+    var token = this.scanner.next();
+    if (token.tokenType !== Token.TK_SYMBOL || token.tokenValue !== symbol) {
       message = message || ("expected symbol \"" + symbol + "\"");
       throw new PascalError(token, message);
     }
@@ -1956,8 +1956,8 @@ var Pascal = (function() {
   // Eats the next symbol. If it's not an identifier, raises an error with this
   // message. Returns the identifier token.
   Parser.prototype._expectIdentifier = function (message) {
-    var token = this.lexer.next();
-    if (token.tokenType !== Token.T_IDENTIFIER) {
+    var token = this.scanner.next();
+    if (token.tokenType !== Token.TK_IDENTIFIER) {
       throw new PascalError(token, message);
     }
     return token;
@@ -1968,7 +1968,7 @@ var Pascal = (function() {
     var declarations = [];
 
     // Parse each declaration or block.
-    while (!this.lexer.lookAhead().isReserved("begin")) {
+    while (!this.scanner.lookAhead().isReserved("begin")) {
       // This parser also eats the semicolon after the declaration.
       var nodes = this._parseDeclaration(symbolTable);
 
@@ -1982,7 +1982,7 @@ var Pascal = (function() {
   // Parse any declaration (uses, var, procedure, function). Returns a list
   // of them, in case a declaration expands to be multiple nodes.
   Parser.prototype._parseDeclaration = function (symbolTable) {
-    var token = this.lexer.lookAhead();
+    var token = this.scanner.lookAhead();
 
     if (token.isReserved("uses")) {
       return this._parseUsesDeclaration(symbolTable);
@@ -1999,7 +1999,7 @@ var Pascal = (function() {
       return [this._parseSubprogramDeclaration(symbolTable, Node.PROCEDURE)];
     } else if (token.isReserved("function")) {
       return [this._parseSubprogramDeclaration(symbolTable, Node.FUNCTION)];
-    } else if (token.tokenType === Token.T_EOF) {
+    } else if (token.tokenType === Token.TK_EOF) {
       throw new PascalError(token, "unexpected end of file");
     } else {
       throw new PascalError(token, "unexpected token");
@@ -2064,7 +2064,7 @@ var Pascal = (function() {
       this._expectSymbol(";");
 
       // If the next token is an identifier, then we keep going.
-    } while (this.lexer.lookAhead().tokenType === Token.T_IDENTIFIER);
+    } while (this.scanner.lookAhead().tokenType === Token.TK_IDENTIFIER);
 
     return nodes;
   };
@@ -2081,9 +2081,9 @@ var Pascal = (function() {
 
       // Parse optional type.
       var type = null;
-      token = this.lexer.lookAhead();
+      token = this.scanner.lookAhead();
       if (token.isSymbol(":")) {
-        this.lexer.next();
+        this.scanner.next();
         type = this._parseType(symbolTable);
       }
 
@@ -2134,7 +2134,7 @@ var Pascal = (function() {
 
       // Semicolon terminator.
       this._expectSymbol(";");
-    } while (this.lexer.lookAhead().tokenType === Token.T_IDENTIFIER);
+    } while (this.scanner.lookAhead().tokenType === Token.TK_IDENTIFIER);
 
     return nodes;
   };
@@ -2209,7 +2209,7 @@ var Pascal = (function() {
 
       // Semicolon terminator.
       this._expectSymbol(";");
-    } while (this.lexer.lookAhead().tokenType === Token.T_IDENTIFIER);
+    } while (this.scanner.lookAhead().tokenType === Token.TK_IDENTIFIER);
 
     // Fill in incomplete types. They're required to be defined by the end of
     // the "type" block.
@@ -2237,7 +2237,7 @@ var Pascal = (function() {
     var symbolTable = new SymbolTable(symbolTable);
 
     // Parse the parameters.
-    var token = this.lexer.lookAhead();
+    var token = this.scanner.lookAhead();
     var parameters = [];
     if (token.isSymbol("(")) {
       this._expectSymbol("(");
@@ -2247,7 +2247,7 @@ var Pascal = (function() {
         var byReference = false;
 
         // See if we're passing this batch by reference.
-        if (this.lexer.lookAhead().isReserved("var")) {
+        if (this.scanner.lookAhead().isReserved("var")) {
           this._expectReservedWord("var");
           byReference = true;
         }
@@ -2337,20 +2337,20 @@ var Pascal = (function() {
 
     var foundEnd = false;
     while (!foundEnd) {
-      token = this.lexer.lookAhead();
+      token = this.scanner.lookAhead();
       if (token.isReserved(endWord)) {
         // End of block.
-        this.lexer.next();
+        this.scanner.next();
         foundEnd = true;
       } else if (token.isSymbol(";")) {
         // Empty statement.
-        this.lexer.next();
+        this.scanner.next();
       } else {
         // Parse statement.
         statements.push(this._parseStatement(symbolTable));
 
         // After an actual statement, we require a semicolon or end of block.
-        token = this.lexer.lookAhead();
+        token = this.scanner.lookAhead();
         if (!token.isReserved(endWord) && !token.isSymbol(";")) {
           throw new PascalError(token, "expected \";\" or \"" + endWord + "\"");
         }
@@ -2364,7 +2364,7 @@ var Pascal = (function() {
 
   // Parse a statement, such as a for loop, while loop, assignment, or procedure call.
   Parser.prototype._parseStatement = function (symbolTable) {
-    var token = this.lexer.lookAhead();
+    var token = this.scanner.lookAhead();
     var node;
 
     // Handle simple constructs.
@@ -2380,12 +2380,12 @@ var Pascal = (function() {
       node = this._parseBlock(symbolTable, "begin", "end");
     } else if (token.isReserved("exit")) {
       node = this._parseExitStatement(symbolTable);
-    } else if (token.tokenType === Token.T_IDENTIFIER) {
+    } else if (token.tokenType === Token.TK_IDENTIFIER) {
       // This could be an assignment or procedure call. Both start with an identifier.
       node = this._parseVariable(symbolTable);
 
       // See if this is an assignment or procedure call.
-      token = this.lexer.lookAhead();
+      token = this.scanner.lookAhead();
       if (token.isSymbol(":=")) {
         // It's an assignment.
         node = this._parseAssignment(symbolTable, node);
@@ -2421,7 +2421,7 @@ var Pascal = (function() {
 
     // The next token determines whether the variable continues or ends here.
     while (true) {
-      var nextToken = this.lexer.lookAhead();
+      var nextToken = this.scanner.lookAhead();
       if (nextToken.isSymbol("[")) {
         // Replace the node with an array node.
         node = this._parseArrayDereference(symbolTable, node);
@@ -2498,12 +2498,12 @@ var Pascal = (function() {
   Parser.prototype._parseArguments = function (symbolTable, type) {
     var argumentList = [];
 
-    if (this.lexer.lookAhead().isSymbol("(")) {
+    if (this.scanner.lookAhead().isSymbol("(")) {
       this._expectSymbol("(");
-      var token = this.lexer.lookAhead();
+      var token = this.scanner.lookAhead();
       if (token.isSymbol(")")) {
         // Empty arguments.
-        this.lexer.next();
+        this.scanner.next();
       } else {
         do {
           // Find the formal parameter. Some functions (like WriteLn)
@@ -2558,7 +2558,7 @@ var Pascal = (function() {
     var thenStatement = this._parseStatement(symbolTable);
 
     var elseStatement = null;
-    var elseToken = this.lexer.lookAhead();
+    var elseToken = this.scanner.lookAhead();
     if (elseToken.isReserved("else")) {
       this._expectReservedWord("else");
       var elseStatement = this._parseStatement(symbolTable);
@@ -2615,7 +2615,7 @@ var Pascal = (function() {
     var loopVariableToken = this._expectIdentifier("expected identifier for \"for\" loop");
     this._expectSymbol(":=");
     var fromExpr = this._parseExpression(symbolTable);
-    var downto = this.lexer.lookAhead().isReserved("downto");
+    var downto = this.scanner.lookAhead().isReserved("downto");
     if (downto) {
       this._expectReservedWord("downto");
     } else {
@@ -2657,7 +2657,7 @@ var Pascal = (function() {
   // to an unknown type is found, it is added to the array. If such a pointer
   // is found and the array was not passed in, we throw.
   Parser.prototype._parseType = function (symbolTable, incompleteTypes) {
-    var token = this.lexer.next();
+    var token = this.scanner.next();
     var node;
 
     if (token.isReserved("array")) {
@@ -2707,7 +2707,7 @@ var Pascal = (function() {
           throw new PascalError(typeNameToken, "unknown type");
         }
       }
-    } else if (token.tokenType === Token.T_IDENTIFIER) {
+    } else if (token.tokenType === Token.TK_IDENTIFIER) {
       // Type name.
       var symbolLookup = symbolTable.getType(token);
 
@@ -2731,10 +2731,10 @@ var Pascal = (function() {
     var fields = [];
 
     while (true) {
-      var token = this.lexer.lookAhead();
+      var token = this.scanner.lookAhead();
       if (token.isSymbol(";")) {
         // Empty field, no problem.
-        this.lexer.next();
+        this.scanner.next();
       } else if (token.isReserved("end")) {
         // End of record.
         this._expectReservedWord("end");
@@ -2743,7 +2743,7 @@ var Pascal = (function() {
         fields.push.apply(fields,
           this._parseRecordSection(symbolTable, token, incompleteTypes));
         // Must have ";" or "end" after field.
-        var token = this.lexer.lookAhead();
+        var token = this.scanner.lookAhead();
         if (!token.isSymbol(";") && !token.isReserved("end")) {
           throw new PascalError(token, "expected \";\" or \"end\" after field");
         }
@@ -2811,7 +2811,7 @@ var Pascal = (function() {
     var node = this._parseAdditiveExpression(symbolTable);
 
     while (true) {
-      var token = this.lexer.lookAhead();
+      var token = this.scanner.lookAhead();
       if (token.isSymbol("=")) {
         node = this._createBinaryNode(symbolTable, token, node, Node.EQUALITY,
           this._parseAdditiveExpression).withExpressionType(Node.booleanType);
@@ -2844,7 +2844,7 @@ var Pascal = (function() {
     var node = this._parseMultiplicativeExpression(symbolTable);
 
     while (true) {
-      var token = this.lexer.lookAhead();
+      var token = this.scanner.lookAhead();
       if (token.isSymbol("+")) {
         node = this._createBinaryNode(symbolTable, token, node, Node.ADDITION,
           this._parseMultiplicativeExpression);
@@ -2868,7 +2868,7 @@ var Pascal = (function() {
     var node = this._parseUnaryExpression(symbolTable);
 
     while (true) {
-      var token = this.lexer.lookAhead();
+      var token = this.scanner.lookAhead();
       if (token.isSymbol("*")) {
         node = this._createBinaryNode(symbolTable, token, node, Node.MULTIPLICATION,
           this._parseUnaryExpression);
@@ -2897,7 +2897,7 @@ var Pascal = (function() {
     var node;
 
     // Parse unary operator.
-    var token = this.lexer.lookAhead();
+    var token = this.scanner.lookAhead();
     if (token.isSymbol("-")) {
       // Negation.
       this._expectSymbol("-");
@@ -2933,13 +2933,13 @@ var Pascal = (function() {
   // Parses an atomic expression, such as a number, identifier, or
   // parenthesized expression.
   Parser.prototype._parsePrimaryExpression = function (symbolTable) {
-    var token = this.lexer.lookAhead();
+    var token = this.scanner.lookAhead();
     var node;
 
-    if (token.tokenType === Token.T_NUMBER) {
+    if (token.tokenType === Token.TK_NUMBER) {
       // Numeric literal.
-      token = this.lexer.next();
-      node = new Node(Node.T_NUMBER, token);
+      token = this.scanner.next();
+      node = new Node(Node.TK_NUMBER, token);
       var v = node.getNumber();
       var typeCode;
 
@@ -2951,18 +2951,18 @@ var Pascal = (function() {
       }
 
       // Set the type based on the kind of number we have. Really we should
-      // have the lexer tell us, because JavaScript treats "2.0" the same as "2".
+      // have the scanner tell us, because JavaScript treats "2.0" the same as "2".
       node.expressionType = new Node(Node.SIMPLE_TYPE, token, {
         typeCode: typeCode
       });
-    } else if (token.tokenType === Token.T_STRING) {
+    } else if (token.tokenType === Token.TK_STRING) {
       // String literal.
-      token = this.lexer.next();
-      node = new Node(Node.T_STRING, token);
+      token = this.scanner.next();
+      node = new Node(Node.TK_STRING, token);
       node.expressionType = new Node(Node.SIMPLE_TYPE, token, {
         typeCode: defs.S
       });
-    } else if (token.tokenType === Token.T_IDENTIFIER) {
+    } else if (token.tokenType === Token.TK_IDENTIFIER) {
       // Parse a variable (identifier, array dereference, etc.).
       node = this._parseVariable(symbolTable);
 
@@ -2972,7 +2972,7 @@ var Pascal = (function() {
       // not just an identifier, then we leave it alone.
       if (node.nodeType === Node.IDENTIFIER) {
         // Peek to see if we've got parentheses.
-        var nextToken = this.lexer.lookAhead();
+        var nextToken = this.scanner.lookAhead();
 
         // Look up the symbol.
         var symbolLookup;
@@ -3125,7 +3125,7 @@ var Pascal = (function() {
 
   // Creates a binary node.
   //
-  // token: the specific token, which must be next in the lexer.
+  // token: the specific token, which must be next in the scanner.
   // node: the first (left) operand.
   // nodeType: the type of the binary node (Node.ADDITION, etc.).
   // rhsFn: the function to call to parse the RHS. It should take a symbolTable object
@@ -3136,7 +3136,7 @@ var Pascal = (function() {
                                                  nodeType, rhsFn, forceType) {
 
     // It must be next, we've only peeked at it.
-    if (token.tokenType === Token.T_SYMBOL) {
+    if (token.tokenType === Token.TK_SYMBOL) {
       this._expectSymbol(token.tokenValue);
     } else {
       this._expectReservedWord(token.tokenValue);
@@ -3925,7 +3925,7 @@ var Pascal = (function() {
           }
         }
         break;
-      case Node.T_NUMBER:
+      case Node.TK_NUMBER:
         var v = node.getNumber();
         var cindex = bytecode.addConstant(v);
 
@@ -3939,7 +3939,7 @@ var Pascal = (function() {
 
         bytecode.add(defs.LDC, typeCode, cindex, "constant value " + v);
         break;
-      case Node.T_STRING:
+      case Node.TK_STRING:
         var v = node.token.tokenValue;
         var cindex = bytecode.addConstant(v);
         bytecode.add(defs.LDC, defs.S, cindex, "string '" + v + "'");
@@ -4444,16 +4444,15 @@ var Pascal = (function() {
         error: function () {
           console.log('File not found');
         },
-        success: function (source) {
-          // rename source to contents
-          this.source = source;
+        success: function (contents) {
+
           var DUMP_TREE = true;
           var DUMP_BYTECODE = true;
-          var DEBUG_TRACE = false;
+          var DEBUG_TRACE = true;
 
-          var stream = new Stream(this.source);
-          var lexer = new CommentStripper(new Lexer(stream));
-          var parser = new Parser(lexer);
+          var stream = new Stream(contents);
+          var scanner = new CommentStripper(new Scanner(stream));
+          var parser = new Parser(scanner);
 
           try {
             // Create the symbol table of built-in constants, functions, and procedures.
