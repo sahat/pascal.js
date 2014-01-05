@@ -1,14 +1,23 @@
 /**
- * Pascal.js
- * @version 1.0
+ * PascalJS
+ * @version 0.1
  * @author Sahat Yalkabov
  * @license MIT
  */
-(function() {
+var Pascal = (function() {
 
   /**
    * Constants
    */
+
+  var SYMBOLS = ['<', '<>', '<<', ':', ':=', '>', '>>', '<=', '>=', '-', '+',
+    '*', '/', ';', ',', '[', ']', '(', ')', '=', '^', '@', '(*'];
+
+  var RESERVED = ['program', 'var', 'begin', 'end', 'type', 'procedure', 'uses',
+    'function', 'for', 'while', 'repeat', 'do', 'then', 'downto',
+    'to','if', 'else', 'array', 'of', 'not', 'or',  'mod', 'and',
+    'const', 'div','record', 'exit'];
+
   var OPCODE_BITS = 8;
   var OPERAND1_BITS = 9;
   var OPERAND2_BITS = 15;
@@ -257,32 +266,9 @@
   defs.opcodeToName[defs.STI] = "STI";
   defs.opcodeToName[defs.IXA] = "IXA";
 
-  var Pascal = function(obj) {
-    return obj;
-  };
-
-
-  var PascalError = function(token, message) {
-    this.token = token;
-    this.message = message;
-    this.stack = new Error().stack;
-  };
-
-  PascalError.prototype.getMessage = function () {
-    var message = "Error: " + this.message;
-
-    // Add token info.
-    if (this.token) {
-      message += " (\"" + this.token.tokenValue + "\", line " + this.token.lineNumber + ")";
-    }
-
-    return message;
-  };
-
-
-  /**
+  /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
    * Helpers
-   */
+   * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
   function isWhitespace(char) {
     return char == ' ' || char == '\t' || char == '\n' || char == '\r';
@@ -336,6 +322,28 @@
     }
   }
 
+  // Constructor
+
+  var Pascal = function(obj) {
+    return obj;
+  };
+
+  var PascalError = function(token, message) {
+    this.token = token;
+    this.message = message;
+    this.stack = new Error().stack;
+  };
+
+  PascalError.prototype.getMessage = function () {
+    var message = "Error: " + this.message;
+
+    // Add token info.
+    if (this.token) {
+      message += " (\"" + this.token.tokenValue + "\", line " + this.token.lineNumber + ")";
+    }
+
+    return message;
+  };
 
   var Token = function (value, type) {
     this.tokenValue = value;
@@ -388,13 +396,7 @@
     return "(" + this.data.join(", ") + ")";
   };
 
-  var SYMBOLS = ['<', '<>', '<<', ':', ':=', '>', '>>', '<=', '>=', '-', '+',
-    '*', '/', ';', ',', '[', ']', '(', ')', '=', '^', '@', '(*'];
 
-  var RESERVED = ['program', 'var', 'begin', 'end', 'type', 'procedure', 'uses',
-    'function', 'for', 'while', 'repeat', 'do', 'then', 'downto',
-    'to','if', 'else', 'array', 'of', 'not', 'or',  'mod', 'and',
-    'const', 'div','record', 'exit'];
 
   var isReserved = function (value) {
     return RESERVED.indexOf(value.toLowerCase()) !== -1;
@@ -2198,7 +2200,7 @@
       // Create the node.
       var node = new Node(Node.TYPE, equalToken, {
         name: identifierNode,
-        type: type,
+        type: type
       });
 
       // Add the type to our own symbol table.
@@ -2298,7 +2300,7 @@
     // Create the type of the subprogram itself.
     var type = new Node(Node.SUBPROGRAM_TYPE, procedureToken, {
       parameters: parameters,
-      returnType: returnType,
+      returnType: returnType
     });
 
     // Add the procedure to our parent symbol table.
@@ -4434,78 +4436,72 @@
     return this.exitInstructions.pop();
   };
 
+  return {
+    compile: function() {
+      $.ajax('examples/hello.pas', {
+        dataType: 'text',
+        isLocal: true,
+        error: function () {
+          console.log('File not found');
+        },
+        success: function (source) {
+          // rename source to contents
+          this.source = source;
+          var DUMP_TREE = true;
+          var DUMP_BYTECODE = true;
+          var DEBUG_TRACE = false;
 
+          var stream = new Stream(this.source);
+          var lexer = new CommentStripper(new Lexer(stream));
+          var parser = new Parser(lexer);
 
+          try {
+            // Create the symbol table of built-in constants, functions, and procedures.
+            var builtinSymbolTable = SymbolTable.makeBuiltinSymbolTable();
 
+            // Parse the program into a parse tree. Create the symbol table as we go.
+            var before = new Date().getTime();
+            var root = parser.parse(builtinSymbolTable);
+            /// console.log("Parsing: " + (new Date().getTime() - before) + "ms");
+            if (DUMP_TREE) {
+              var output = root.print("");
+              console.log(output);
+            }
 
-  $.ajax('examples/hello.pas', {
-    dataType: 'text',
-    isLocal: true,
-    error: function () {
-      console.log('File not found');
-    },
-    success: function (source) {
-      // rename source to contents
-      this.source = source;
-      var DUMP_TREE = true;
-      var DUMP_BYTECODE = true;
-      var DEBUG_TRACE = false;
+            // Compile to bytecode.
+            before = new Date().getTime();
+            var compiler = new Compiler();
+            var bytecode = compiler.compile(root);
+            /// console.log("Code generation: " + (new Date().getTime() - before) + "ms");
+            if (DUMP_BYTECODE) {
+              var output = bytecode.print();
+              console.log(output);
+            }
 
-      var stream = new Stream(this.source);
-      var lexer = new CommentStripper(new Lexer(stream));
-      var parser = new Parser(lexer);
+            // Execute the bytecode.
+            var machine = new Machine(bytecode, this.keyboard);
+            if (DEBUG_TRACE) {
+              machine.setDebugCallback(function (state) {
+                console.log(state);
+              });
+            }
+            machine.setFinishCallback(function (runningTime) {
+              console.log("Finished program: " + runningTime + "s");
+            });
+            machine.setOutputCallback(function (line) {
+              console.log(line);
+            });
 
-      try {
-        // Create the symbol table of built-in constants, functions, and procedures.
-        var builtinSymbolTable = SymbolTable.makeBuiltinSymbolTable();
-
-        // Parse the program into a parse tree. Create the symbol table as we go.
-        var before = new Date().getTime();
-        var root = parser.parse(builtinSymbolTable);
-        /// console.log("Parsing: " + (new Date().getTime() - before) + "ms");
-        if (DUMP_TREE) {
-          var output = root.print("");
-          console.log(output);
+            machine.run();
+          } catch (e) {
+            // Print parsing errors.
+            if (e instanceof PascalError) {
+              console.error(e.getMessage());
+            }
+            console.log(e.stack);
+          }
         }
-
-        // Compile to bytecode.
-        before = new Date().getTime();
-        var compiler = new Compiler();
-        var bytecode = compiler.compile(root);
-        /// console.log("Code generation: " + (new Date().getTime() - before) + "ms");
-        if (DUMP_BYTECODE) {
-          var output = bytecode.print();
-          console.log(output);
-        }
-
-        // Execute the bytecode.
-        var machine = new Machine(bytecode, this.keyboard);
-        if (DEBUG_TRACE) {
-          machine.setDebugCallback(function (state) {
-            console.log(state);
-          });
-        }
-        machine.setFinishCallback(function (runningTime) {
-          console.log("Finished program: " + runningTime + "s");
-        });
-        machine.setOutputCallback(function (line) {
-          console.log(line);
-        });
-
-        machine.run();
-      } catch (e) {
-        // Print parsing errors.
-        if (e instanceof PascalError) {
-          console.error(e.getMessage());
-        }
-        console.log(e.stack);
-      }
+      });
     }
-  });
-
-  if (typeof define === 'function' && define.amd) {
-    define('Pascal', [], function() {
-      return Pascal;
-    });
   }
-}).call(this);
+})();
