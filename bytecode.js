@@ -44,10 +44,6 @@ var Bytecode = function (native) {
     return this.istore.length;
   };
 
-  this.print = function () {
-    return this._printConstants() + "\n" + this._printIstore();
-  };
-
   this.setStartAddress = function () {
     this.startAddress = this.getNextAddress();
   };
@@ -58,32 +54,6 @@ var Bytecode = function (native) {
       comment = existingComment + "; " + comment;
     }
     this.comments[address] = comment;
-  };
-
-  this._printConstants = function () {
-    var lines = [];
-    for (var i = 0; i < this.constants.length; i++) {
-      var value = this.constants[i];
-      if (typeof(value) === "string") {
-        value = "'" + value + "'";
-      }
-      lines.push(utils.rightAlign(i, 4) + ": " + value);
-    }
-    return "Constants:\n" + lines.join("\n") + "\n";
-  };
-
-  this._printIstore = function () {
-    var lines = [];
-    for (var address = 0; address < this.istore.length; address++) {
-      var line = utils.rightAlign(address, 4) + ": " +
-        utils.leftAlign(OPCODES.disassemble(this.istore[address]), 11);
-      var comment = this.comments[address];
-      if (comment) {
-        line += " ; " + comment;
-      }
-      lines.push(line);
-    }
-    return 'Istore:\n' + lines.join("\n") + "\n";
   };
 };
 

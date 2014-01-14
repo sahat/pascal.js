@@ -24,58 +24,22 @@ var Compiler = require('./compiler');
 var Machine = require('./machine');
 var Parser = require('./parser');
 
+
+
 var contents = fs.readFileSync('./examples/hello.pas', 'utf8');
-var DUMP_TREE = true;
-var DUMP_BYTECODE = true;
-var DEBUG_TRACE = true;
 
 var stream = new Stream(contents);
 var scanner = new CommentStripper(new Scanner(stream));
 var parser = new Parser(scanner);
+var builtinSymbolTable = SymbolTable.makeBuiltinSymbolTable();
+var root = parser.parse(builtinSymbolTable);
+var compiler = new Compiler();
+var bytecode = compiler.compile(root);
+var machine = new Machine(bytecode);
 
-try {
-  // Create the symbol table of built-in constants, functions, and procedures.
-  var builtinSymbolTable = SymbolTable.makeBuiltinSymbolTable();
 
-  // Parse the program into a parse tree. Create the symbol table as we go.
-  var before = new Date().getTime();
-  var root = parser.parse(builtinSymbolTable);
-  /// console.log("Parsing: " + (new Date().getTime() - before) + "ms");
-  if (DUMP_TREE) {
-    var output = root.print("");
-    console.log(output);
-  }
+machine.setOutputCallback(function (line) {
+  console.log(line);
+});
 
-  // Compile to bytecode.
-  before = new Date().getTime();
-  var compiler = new Compiler();
-  var bytecode = compiler.compile(root);
-  /// console.log("Code generation: " + (new Date().getTime() - before) + "ms");
-  if (DUMP_BYTECODE) {
-    var output = bytecode.print();
-    console.log(output);
-  }
-
-  // Execute the bytecode.
-  var machine = new Machine(bytecode, this.keyboard);
-  if (DEBUG_TRACE) {
-    machine.setDebugCallback(function (state) {
-      console.log(state);
-    });
-  }
-  machine.setFinishCallback(function (runningTime) {
-    console.log("Finished program: " + runningTime + "s");
-  });
-  machine.setOutputCallback(function (line) {
-    console.log(line);
-  });
-
-  machine.run();
-} catch (e) {
-  // Print parsing errors.
-  if (e instanceof PascalError) {
-    console.error(e.getMessage());
-  }
-  console.log(e.stack);
-}
-
+machine.run();

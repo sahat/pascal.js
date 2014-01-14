@@ -40,18 +40,10 @@ var Machine = function (bytecode, keyboard) {
   // The state of the machine (STATE_...).
   this.state = Machine.STATE_STOPPED;
 
-  // Debug callback. Can be called with a string that should be displayed to
-  // the user.
-  this.debugCallback = null;
-
   // Finish callback. Called when the program terminates, either by running off
   // the end of the program's begin/end block, or by calling halt. The callback
   // is passed the number of seconds that the program ran.
-  this.finishCallback = null;
 
-  // Callback that standard output is sent to. This is called once per
-  // line of output, and the line is the only parameter.
-  this.outputCallback = null;
 
   // The number of ms that the program is expecting us to delay now.
   this.pendingDelay = 0;
@@ -113,7 +105,6 @@ Machine.prototype.run = function () {
   this.startTime = new Date().getTime();
 
   // Run the program.
-  this._dumpState();
 
   var self = this;
   var stepAndTimeout = function () {
@@ -142,21 +133,9 @@ Machine.prototype.step = function (count) {
       console.log(this._getState());
       this.stopProgram();
     }
-    this._dumpState();
   }
 };
 
-// Set a callback for debugging. The callback is called with a string that should
-// be displayed to the user.
-Machine.prototype.setDebugCallback = function (debugCallback) {
-  this.debugCallback = debugCallback;
-};
-
-// Set a callback for when the program ends. The callback is called with a number for
-// the number of seconds that the program ran.
-Machine.prototype.setFinishCallback = function (finishCallback) {
-  this.finishCallback = finishCallback;
-};
 
 // Set a callback for standard output. The callback is called with a string to
 // write.
@@ -164,12 +143,6 @@ Machine.prototype.setOutputCallback = function (outputCallback) {
   this.outputCallback = outputCallback;
 };
 
-// Dump the state of the machine to the debug callback.
-Machine.prototype._dumpState = function () {
-  if (this.debugCallback != null) {
-    this.debugCallback(this._getState());
-  }
-};
 
 // Generate a string which is a human-readable version of the machine state.
 Machine.prototype._getState = function () {
@@ -262,9 +235,6 @@ Machine.prototype._checkDataAddress = function (address) {
 Machine.prototype.stopProgram = function () {
   if (this.state !== Machine.STATE_STOPPED) {
     this.state = Machine.STATE_STOPPED;
-    if (this.finishCallback !== null) {
-      this.finishCallback((new Date().getTime() - this.startTime)/1000);
-    }
   }
 };
 

@@ -142,8 +142,6 @@ var Scanner = function(stream) {
       throw new PascalError(token, "unknown symbol");
     }
     token.line = lineNumber;
-    console.log("Fetched token \"" + token.tokenValue + "\" of type " +
-      token.tokenType + " on line " + token.line);
     return token;
   };
 

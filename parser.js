@@ -2,9 +2,9 @@ var OPCODES = require('./opcodes');
 var Node = require('./node');
 var Token = require('./Token');
 var SymbolTable = require('./symbol_table');
+var PascalError = require('./pascal_error');
 
 function Parser(scanner) {
-  console.log(scanner)
   this.scanner = scanner;
 }
 
@@ -1282,8 +1282,7 @@ Parser.prototype.getCompatibleType = function (token, type1, type2) {
   // Must be the same type of node. Can't cast between node types
   // (e.g., array to set).
   if (type1.nodeType !== type2.nodeType) {
-    throw new PascalError(token, "basic types are incompatible: " +
-      type1.print() + " and " + type2.print());
+    throw new PascalError(token, "basic types are incompatible");
   }
 
   // Can cast between some simple types.
