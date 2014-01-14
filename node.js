@@ -1,5 +1,6 @@
-var defs = require('./constants').defs;
+var OPCODES = require('./opcodes');
 var Token = require('./token');
+var PascalError = require('./pascal_error');
 
 var Node = function (nodeType, token, additionalFields) {
   this.nodeType = nodeType;
@@ -24,15 +25,15 @@ var Node = function (nodeType, token, additionalFields) {
 
   this.isNumericType = function() {
     return this !== null && this.nodeType === Node.SIMPLE_TYPE &&
-      (this.typeCode == defs.C || this.typeCode == defs.I || this.typeCode == defs.R);
+      (this.typeCode == OPCODES.C || this.typeCode == OPCODES.I || this.typeCode == OPCODES.R);
   };
 
   this.isBooleanType = function() {
-    return this !== null && this.nodeType === Node.SIMPLE_TYPE && this.typeCode == defs.B;
+    return this !== null && this.nodeType === Node.SIMPLE_TYPE && this.typeCode == OPCODES.B;
   };
 
   this.isVoidType = function() {
-    return this !== null && this.nodeType === Node.SIMPLE_TYPE && this.typeCode == defs.P;
+    return this !== null && this.nodeType === Node.SIMPLE_TYPE && this.typeCode == OPCODES.P;
   };
 
   this.isSameIdentifier = function(other) {
@@ -367,7 +368,7 @@ var Node = function (nodeType, token, additionalFields) {
         s += this.variable.print() + "^";
         break;
       case Node.SIMPLE_TYPE:
-        if (this.typeCode === defs.A) {
+        if (this.typeCode === OPCODES.A) {
           if (this.typeName) {
             s += "^" + this.typeName.print();
           } else {
@@ -375,7 +376,7 @@ var Node = function (nodeType, token, additionalFields) {
             s += "Pointer";
           }
         } else {
-          s += defs.typeCodeToName(this.typeCode);
+          s += OPCODES.typeCodeToName(this.typeCode);
         }
         break;
       case Node.RECORD_TYPE:
@@ -403,7 +404,7 @@ var Node = function (nodeType, token, additionalFields) {
         }
 
         // Functions only: return type.
-        if (!this.returnType.isSimpleType(defs.P)) {
+        if (!this.returnType.isSimpleType(OPCODES.P)) {
           s += " : " + this.returnType.print();
         }
         break;
@@ -448,22 +449,22 @@ var Node = function (nodeType, token, additionalFields) {
         var typeCode = type.typeCode;
         var nodeTypeCode = nodeType.typeCode;
 
-        if (typeCode === defs.A || nodeTypeCode === defs.A ||
-          typeCode === defs.B || nodeTypeCode === defs.B ||
-          typeCode === defs.S || nodeTypeCode === defs.S ||
-          typeCode === defs.T || nodeTypeCode === defs.T ||
-          typeCode === defs.P || nodeTypeCode === defs.P ||
-          typeCode === defs.X || nodeTypeCode === defs.X) {
+        if (typeCode === OPCODES.A || nodeTypeCode === OPCODES.A ||
+          typeCode === OPCODES.B || nodeTypeCode === OPCODES.B ||
+          typeCode === OPCODES.S || nodeTypeCode === OPCODES.S ||
+          typeCode === OPCODES.T || nodeTypeCode === OPCODES.T ||
+          typeCode === OPCODES.P || nodeTypeCode === OPCODES.P ||
+          typeCode === OPCODES.X || nodeTypeCode === OPCODES.X) {
 
           // These can't be cast.
           throw new PascalError(this.token, "can't cast from " +
-            defs.typeCodeToName(nodeTypeCode) +
-            " to " + defs.typeCodeToName(typeCode));
+            OPCODES.typeCodeToName(nodeTypeCode) +
+            " to " + OPCODES.typeCodeToName(typeCode));
         }
 
         // Can always cast to a real.
-        if (typeCode === defs.R ||
-          (typeCode === defs.I && nodeTypeCode !== defs.R)) {
+        if (typeCode === OPCODES.R ||
+          (typeCode === OPCODES.I && nodeTypeCode !== OPCODES.R)) {
 
           var node = new Node(Node.CAST, type.token, {
             type: type,
@@ -475,12 +476,12 @@ var Node = function (nodeType, token, additionalFields) {
 
         // Can't cast.
         throw new PascalError(this.token, "can't cast from " +
-          defs.typeCodeToName(nodeTypeCode) +
-          " to " + defs.typeCodeToName(typeCode));
+          OPCODES.typeCodeToName(nodeTypeCode) +
+          " to " + OPCODES.typeCodeToName(typeCode));
       } else {
         // Same simple typeCode. If they're pointers, then they
         // must be compatible types or the source must be nil.
-        if (type.typeCode === defs.A) {
+        if (type.typeCode === OPCODES.A) {
           if (!nodeType.typeName) {
             // Assigning from Nil, always allowed.
           } else if (!type.typeName) {
@@ -747,13 +748,13 @@ Node.SET_TYPE = 75;
 Node.SUBPROGRAM_TYPE = 76;
 
 
-Node.pointerType = new Node(Node.SIMPLE_TYPE, null, {typeCode: defs.A});
-Node.booleanType = new Node(Node.SIMPLE_TYPE, null, {typeCode: defs.B});
-Node.charType = new Node(Node.SIMPLE_TYPE, null, {typeCode: defs.C});
-Node.integerType = new Node(Node.SIMPLE_TYPE, null, {typeCode: defs.I});
-Node.voidType = new Node(Node.SIMPLE_TYPE, null, {typeCode: defs.P});
-Node.realType = new Node(Node.SIMPLE_TYPE, null, {typeCode: defs.R});
-Node.stringType = new Node(Node.SIMPLE_TYPE, null, {typeCode: defs.S});
+Node.pointerType = new Node(Node.SIMPLE_TYPE, null, {typeCode: OPCODES.A});
+Node.booleanType = new Node(Node.SIMPLE_TYPE, null, {typeCode: OPCODES.B});
+Node.charType = new Node(Node.SIMPLE_TYPE, null, {typeCode: OPCODES.C});
+Node.integerType = new Node(Node.SIMPLE_TYPE, null, {typeCode: OPCODES.I});
+Node.voidType = new Node(Node.SIMPLE_TYPE, null, {typeCode: OPCODES.P});
+Node.realType = new Node(Node.SIMPLE_TYPE, null, {typeCode: OPCODES.R});
+Node.stringType = new Node(Node.SIMPLE_TYPE, null, {typeCode: OPCODES.S});
 
 Node.makeIdentifierNode = function (name) {
   return new Node(Node.IDENTIFIER, new Token(name, Token.TK_IDENTIFIER));

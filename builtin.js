@@ -1,6 +1,6 @@
 var Token = require('./token');
 var Node = require('./node');
-var defs = require('./constants').defs;
+var OPCODES = require('./opcodes');
 
 var builtinRandom = function (ctl, t) {
   if (t === undefined) {
@@ -26,7 +26,7 @@ var builtin = {
     // Constants and functions.
     symbolTable.addNativeConstant("Nil", null,
       new Node(Node.SIMPLE_TYPE, new Token("Nil", Token.TK_IDENTIFIER), {
-        typeCode: defs.A,
+        typeCode: OPCODES.A,
         typeName: null,  // Important -- this is what makes this nil.
         type: null
       }));

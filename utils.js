@@ -1,6 +1,6 @@
 var RESERVED = require('./constants').RESERVED;
 
-module.exports = {
+var utils = {
   isReserved: function (value) {
     return RESERVED.indexOf(value.toLowerCase()) !== -1;
   },
@@ -41,3 +41,7 @@ module.exports = {
     }
   }
 };
+
+module.exports = utils;
+
+
