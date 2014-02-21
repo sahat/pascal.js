@@ -9,7 +9,6 @@ var _ = require('underscore');
 var fs = require('fs');
 var Token = require('./token');
 var Scanner = require('./scanner');
-var Stream = require('./stream');
 var CommentStripper = require('./comment_stripper');
 var SymbolTable = require('./symbol_table');
 var Compiler = require('./compiler');
@@ -19,8 +18,7 @@ var Parser = require('./parser');
 
 var filePath = process.argv[2];
 var contents = fs.readFileSync(filePath, 'utf8');
-var stream = new Stream(contents);
-var scanner = new CommentStripper(new Scanner(stream));
+var scanner = new CommentStripper(new Scanner(contents));
 var parser = new Parser(scanner);
 var builtinSymbolTable = SymbolTable.makeBuiltinSymbolTable();
 var root = parser.parse(builtinSymbolTable);
