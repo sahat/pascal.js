@@ -1,49 +1,44 @@
 var Token = require('./token');
 var utils = require('./utils');
 
-var SYMBOLS = ['<', '<>', '<<', ':', ':=', '>', '>>', '<=', '>=', '-', '+', '*',
+var SYMBOLS = ['<', '>', '<<', '>>', '<>', ':', ':=', '<=', '>=', '-', '+', '*',
   '/', ';', ',', '[', ']', '(', ')', '=', '^', '@', '(*'];
 
 /**
  * Scanner
- * @param stream
- * @returns {Token} Token
+ * @param input
+ * @returns Token
  */
 
 var Scanner = function(input) {
   this.input = input;
-  this.nextToken = null;
   this.position = 0;
   this.line = 1;
+  this.nextToken = null;
 
-  this.next = function() {
-    var token = this.lookAhead();
-    this.nextToken = null;
-    return token;
+  this.nextCharacter = function() {
+    var ch = this.lookAheadCharacter();
+    if (ch !== -1) this.position++;
+    if (ch === '\n') this.line++;
+    return ch;
+  };
+
+  this.lookAheadCharacter = function() {
+    if (this.position >= this.input.length) return -1;
+    return this.input[this.position];
   };
 
   this.previousCharacter = function(char) {
-    if (this.position === 0) {
-      throw new Error("Can't push back at start of stream");
-    }
-    this.position--;
+    if (this.position !== 0 ) this.position--;
     if (this.input[this.position] != char) {
       throw new Error("Pushed back character doesn't match");
     }
   };
 
-  this.nextCharacter = function() {
-    var char = this.lookAheadCharacter();
-    if (char === '\n') this.line++;
-    if (char !== -1) this.position++;
-    return char;
-  };
-
-  this.lookAheadCharacter = function() {
-    if (this.position >= this.input.length) {
-      return -1;
-    }
-    return this.input[this.position];
+  this.next = function() {
+    var token = this.lookAhead();
+    this.nextToken = null;
+    return token;
   };
 
   this.lookAhead = function () {
@@ -53,39 +48,39 @@ var Scanner = function(input) {
 
   this.scanOneToken = function () {
     var lineNumber;
-    var ch = this.nextCharacter();
+    var char = this.nextCharacter();
 
-    while (utils.isWhitespace(ch)) {
+    while (utils.isWhitespace(char)) {
       lineNumber = this.line;
-      ch = this.nextCharacter();
-      if (ch === -1) {
+      char = this.nextCharacter();
+      if (char === -1) {
         return new Token(null, Token.TK_EOF);
       }
     }
 
-    var token = this.maximalMunch(ch, SYMBOLS);
+    var token = this.maximalMunch(char, SYMBOLS);
 
-    if (token !== null && token.isSymbol("(*")) {
+    if (token && token.isSymbol("(*")) {
       var value = "";
       while (true) {
-        ch = this.nextCharacter();
-        if (ch === -1) {
+        char = this.nextCharacter();
+        if (char === -1) {
           break;
-        } else if (ch === "*" && this.lookAheadCharacter() === ")") {
+        } else if (char === "*" && this.lookAheadCharacter() === ")") {
           this.nextCharacter()
           break;
         }
-        value += ch;
+        value += char;
       }
       token = new Token(value, Token.TK_COMMENT);
     }
 
-    if (token === null && utils.isValidIdentifierStart(ch)) {
+    if (!token && utils.isValidIdentifierStart(char)) {
       var value = "";
       while (true) {
-        value += ch;
-        ch = this.lookAheadCharacter();
-        if (ch === -1 || !utils.isValidIdentifierPart(ch)) {
+        value += char;
+        char = this.lookAheadCharacter();
+        if (char === -1 || !utils.isValidIdentifierPart(char)) {
           break;
         }
         this.nextCharacter();
@@ -94,8 +89,8 @@ var Scanner = function(input) {
       token = new Token(value, tokenType);
     }
 
-    if (token === null && (utils.isDigit(ch) || ch === ".")) {
-      if (ch === ".") {
+    if (!token && (utils.isDigit(char) || char === ".")) {
+      if (char === ".") {
         var nextCh = this.lookAheadCharacter();
         if (nextCh === ".") {
           this.nextCharacter();
@@ -105,19 +100,19 @@ var Scanner = function(input) {
         } else {
         }
       }
-      if (token === null) {
+      if (!token) {
         var value = "";
-        var sawDecimalPoint = ch === ".";
+        var sawDecimalPoint = char === ".";
         while (true) {
-          value += ch;
-          ch = this.lookAheadCharacter()
-          if (ch === -1) {
+          value += char;
+          char = this.lookAheadCharacter()
+          if (char === -1) {
             break;
           }
-          if (ch === ".") {
+          if (char === ".") {
             this.nextCharacter()
             var nextCh = this.lookAheadCharacter()
-            this.previousCharacter(ch);
+            this.previousCharacter(char);
             if (nextCh === ".") {
               break;
             }
@@ -126,7 +121,7 @@ var Scanner = function(input) {
             } else {
               sawDecimalPoint = true;
             }
-          } else if (!utils.isDigit(ch)) {
+          } else if (!utils.isDigit(char)) {
             break;
           }
           this.nextCharacter();
@@ -134,38 +129,38 @@ var Scanner = function(input) {
         token = new Token(value, Token.TK_NUMBER);
       }
     }
-    if (token === null && ch === "{") {
-      ch = this.nextCharacter();
+    if (!token && char === "{") {
+      char = this.nextCharacter();
       var value = "";
       while (true) {
-        value += ch;
-        ch = this.nextCharacter();
-        if (ch === -1 || ch === "}") {
+        value += char;
+        char = this.nextCharacter();
+        if (char === -1 || char === "}") {
           break;
         }
       }
       token = new Token(value, Token.TK_COMMENT);
     }
-    if (token === null && ch === "'") {
-      ch = this.nextCharacter();
+    if (!token && char === "'") {
+      char = this.nextCharacter();
       var value = "";
       while (true) {
-        value += ch;
-        ch = this.nextCharacter();
-        if (ch === "'") {
+        value += char;
+        char = this.nextCharacter();
+        if (char === "'") {
           if (this.lookAheadCharacter() === "'") {
             this.nextCharacter()
           } else {
             break;
           }
-        } else if (ch === -1) {
+        } else if (char === -1) {
           break;
         }
       }
       token = new Token(value, Token.TK_STRING);
     }
-    if (token === null) {
-      token = new Token(ch, Token.TK_SYMBOL);
+    if (!token) {
+      token = new Token(char, Token.TK_SYMBOL);
       token.line = lineNumber;
       throw new PascalError(token, "unknown symbol");
     }
@@ -184,7 +179,7 @@ var Scanner = function(input) {
       if ((symbol.length === 1 && ch === symbol) ||
         (symbol.length === 2 && twoCh === symbol)) {
 
-        if (longestSymbol === null || symbol.length > longestSymbol.length) {
+        if (!longestSymbol || symbol.length > longestSymbol.length) {
           longestSymbol = symbol;
         }
       }

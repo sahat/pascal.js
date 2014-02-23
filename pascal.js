@@ -7,8 +7,8 @@
 
 var _ = require('underscore');
 var fs = require('fs');
-var Token = require('./token');
-var Scanner = require('./scanner');
+var Token = require('./Token');
+var Scanner = require('./Scanner');
 var CommentStripper = require('./comment_stripper');
 var SymbolTable = require('./symbol_table');
 var Compiler = require('./compiler');
