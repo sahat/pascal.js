@@ -22,17 +22,22 @@ describe('Scanner', function() {
     scanner.line.should.equal(1);
   });
 
+  it('should return "p" on character lookahead', function() {
+    scanner.lookAheadCharacter().should.equal('p');
+  });
+
   it('should find next character', function() {
 
   });
 
-  it('should perform character lookahead', function() {
-
+  it('should return "program" on token lookahead', function() {
+    scanner.lookAhead().should.equal('program');
   });
 
   it('should find next token', function() {
 
   });
+
 
   it('should return previous character', function() {
 
