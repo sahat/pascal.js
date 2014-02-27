@@ -4,11 +4,10 @@ var Scanner = require('../lib/modules/scanner.js');
 
 describe('Scanner', function() {
 
-  var fileData;
+  var fileData = fs.readFileSync('./test/hello.pas', 'utf8');
   var scanner;
 
-  before(function() {
-    fileData = fs.readFileSync('./test/hello.pas', 'utf8');
+  beforeEach(function() {
     scanner = new Scanner(fileData);
   });
 
@@ -22,33 +21,43 @@ describe('Scanner', function() {
     scanner.line.should.equal(1);
   });
 
-  it('should return "p" on character lookahead', function() {
-    scanner.lookAheadCharacter().should.equal('p');
+  it('should return "p" on next character lookahead', function() {
+    scanner.nextCharacterLookAhead().should.equal('p');
+    scanner.position.should.equal(0);
   });
 
-  it('should find next character', function() {
+  it('should return "p" for the next character', function() {
+    scanner.nextCharacter().should.equal('p');
+    scanner.position.should.equal(1);
 
+  });
+
+  it('should return "r" after after another nextCharacter() call', function() {
+    scanner.nextCharacter();
+    scanner.nextCharacter().should.equal('r');
+    scanner.position.should.equal(2);
   });
 
   it('should return "program" on token lookahead', function() {
-    scanner.lookAhead().should.equal('program');
+    console.log(scanner.lookAhead())
+    scanner.lookAhead().tokenValue.should.equal('program');
   });
 
-  it('should find next token', function() {
-
+  it('should return "program" for the next token', function() {
+    scanner.next().tokenValue.should.equal('program');
   });
-
-
-  it('should return previous character', function() {
-
-  });
-
-  it('should find the longest token', function() {
-
-  });
-
-  it('should find next token', function() {
-
-  });
+//
+//
+//  it('should return previous character', function() {
+//
+//  });
+//
+//  it('should find the longest token', function() {
+//
+//  });
+//
+//  it('should find next token', function() {
+//
+//  });
 
 });
