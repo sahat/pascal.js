@@ -18,7 +18,8 @@ describe('Scanner', function() {
   });
 
   it('should start at position 0 on line 1', function() {
-
+    scanner.position.should.equal(0);
+    scanner.line.should.equal(1);
   });
 
   it('should find next character', function() {
