@@ -39,7 +39,6 @@ describe('Scanner', function() {
   });
 
   it('should return "program" on token lookahead', function() {
-    console.log(scanner.lookAhead())
     scanner.lookAhead().tokenValue.should.equal('program');
   });
 
