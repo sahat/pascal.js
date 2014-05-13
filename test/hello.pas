@@ -10,6 +10,6 @@ begin
     number1 := 10;
     number2 := 20;
     result := number1 + number2;
-    Writeln(number1, ' plus ', number2, ' is ', result )
+    writeln(number1, ' plus ', number2, ' is ', result )
 
 end.
