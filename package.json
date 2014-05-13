@@ -3,7 +3,8 @@
   "name": "pascal",
   "version": "1.0.0",
   "dependencies": {
+    "chai": "*",
     "mocha": "*",
-    "chai": "*"
+    "underscore": "^1.6.0"
   }
 }
