@@ -1,19 +1,23 @@
 program helloworld;
 
 { Print hello world }
-
+var sum, counter: integer;
 var number1, number2, result : integer;
 
 type my_list_of_names = array[0..7] of string;
 
 var the_list: my_list_of_names;
 
+Var counter : integer; {loop counter declared as integer}
+
 begin
 
     the_list[0] := 'Newbie';
+    the_list[1] := 'Second name';
 
     writeln('Hello world!');
-    writeln('Name 5: ', the_list[0]);
+    writeln('Name 0: ', the_list[0]);
+    writeln('Name 1: ', the_list[1]);
 
     number1 := 10;
     number2 := 20;
@@ -30,5 +34,6 @@ begin
 
     writeln('9 divided by 3 is  ', number1 div number2);
 
-
+    for counter := 1 to 7 do
+      writeln('for loop');
 end.
