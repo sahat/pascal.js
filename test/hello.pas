@@ -8,7 +8,7 @@ type my_list_of_names = array[0..7] of string;
 
 var the_list: my_list_of_names;
 
-Var counter : integer; {loop counter declared as integer}
+Var counter : integer;
 
 begin
 
@@ -35,5 +35,5 @@ begin
     writeln('9 divided by 3 is  ', number1 div number2);
 
     for counter := 1 to 7 do
-      writeln('for loop');
+      writeln('Counter - ', counter);
 end.
