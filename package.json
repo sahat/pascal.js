@@ -1,10 +1,9 @@
 {
   "author": "Sahat Yalkabov",
-  "name": "pascal",
+  "name": "pascal.js",
   "version": "1.0.0",
-  "dependencies": {
+  "devDependencies": {
     "chai": "*",
-    "mocha": "*",
-    "underscore": "^1.6.0"
+    "mocha": "*"
   }
 }

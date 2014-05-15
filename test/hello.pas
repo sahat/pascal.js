@@ -12,6 +12,7 @@ Var counter : integer;
 
 begin
 
+
     the_list[0] := 'Newbie';
     the_list[1] := 'Second name';
 
@@ -33,6 +34,11 @@ begin
     number2 := 3;
 
     writeln('9 divided by 3 is  ', number1 div number2);
+
+    if (number1 < 10) then
+       writeln('Number1 is less than 10')
+    else
+       writeln('Number1 is greater than 10');
 
     for counter := 1 to 7 do
       writeln('Counter - ', counter);
