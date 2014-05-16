@@ -6,7 +6,7 @@ var Scanner = require('../lib/modules/scanner');
 var CommentStripper = require('../lib/modules/uncomment');
 var SymbolTable = require('../lib/modules/symbol_table');
 var Compiler = require('../lib/modules/compiler');
-var Machine = require('../lib/modules/machine');
+var Machine = require('../lib/modules/stack_machine');
 var Parser = require('../lib/modules/parser');
 
 describe('Pascal Compiler', function() {
@@ -18,7 +18,7 @@ describe('Pascal Compiler', function() {
   var root = parser.parse(builtinSymbolTable);
   var compiler = new Compiler();
   var bytecode = compiler.compile(root);
-  var machine = new Machine(bytecode);
+  var machine = new StackMachine(bytecode);
 
   it('should start the pascal example', function() {
     machine.setOutputCallback(function(line) {
