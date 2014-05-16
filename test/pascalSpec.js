@@ -20,11 +20,11 @@ describe('Pascal Compiler', function() {
   var bytecode = compiler.compile(root);
   var machine = new Machine(bytecode);
 
-  it('should run the pascal example', function() {
+  it('should start the pascal example', function() {
     machine.setOutputCallback(function(line) {
       line.should.equal('Hello world!');
     });
-    machine.run();
+    machine.start();
   });
 
 });
